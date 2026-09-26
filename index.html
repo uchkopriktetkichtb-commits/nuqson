@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b57a4">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Нуқсон">
+<title>Нуқсон — Учкўприк ТЭТК</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --pri:#0b57a4; --pri-d:#084582; --pri-l:#e7f0fa; --acc:#f2b705;
+  --ok:#1a7f37; --ok-l:#e6f4ea; --bad:#c62828; --bad-l:#fdecec; --warn:#9a6700; --warn-l:#fff4d6;
+  --bg:#f2f4f7; --card:#fff; --tx:#18212b; --mu:#5d6876; --bd:#dbe1e8; --r:14px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--pri)}
+.hidden{display:none!important}
+
+/* app bar */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:6px;height:56px;padding:0 8px;background:var(--pri);color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.bar h1{flex:1;margin:0;font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:#fff;font-size:22px;display:grid;place-items:center;cursor:pointer}
+.ib:active{background:rgba(255,255,255,.18)}
+.net{font-size:12px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.18);white-space:nowrap}
+.net.off{background:#ffd6d6;color:#8a1111}
+
+main{max-width:640px;margin:0 auto;padding:14px 14px calc(110px + var(--safe-b))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 6px;font-size:17px}
+.mu{color:var(--mu)} .sm{font-size:14px} .xs{font-size:12.5px}
+.row-flex{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.center{text-align:center}
+.sec-t{margin:18px 4px 8px;font-size:13px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 16px;border:1px solid var(--bd);border-radius:12px;background:#fff;font-weight:600;cursor:pointer;text-decoration:none;color:var(--tx);width:100%}
+.btn:active{transform:scale(.99);filter:brightness(.97)}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.lg{min-height:58px;font-size:18px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--pri)}
+.btn.bad{color:var(--bad);border-color:#f1c4c4;background:#fff}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btns{display:grid;gap:10px}
+.btns.two{grid-template-columns:1fr 1fr}
+
+/* inputs */
+.fld{display:block;margin-bottom:12px}
+.fld>span{display:block;font-size:14px;color:var(--mu);margin-bottom:5px}
+.inp{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;font-size:17px}
+.inp:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-l)}
+.inp.big{font-size:26px;font-weight:700;text-align:center;letter-spacing:.02em}
+.code{font-size:26px;letter-spacing:.25em;text-align:center;text-transform:uppercase;font-weight:700}
+.search{position:relative}
+.search .inp{padding-left:42px}
+.search::before{content:"🔎";position:absolute;left:13px;top:12px;font-size:17px;opacity:.6}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:8px 14px;border:1.5px solid var(--bd);border-radius:99px;background:#fff;font-size:15px;cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.chip.sm{min-height:34px;padding:5px 11px;font-size:14px}
+.seg{display:flex;border:1.5px solid var(--bd);border-radius:12px;overflow:hidden}
+.seg button{flex:1;min-height:44px;border:0;background:#fff;font-weight:600;cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--bd)}
+.seg button.on{background:var(--pri);color:#fff}
+
+/* lists */
+.list{background:#fff;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.it{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 14px;border:0;border-top:1px solid var(--bd);background:#fff;text-align:left;cursor:pointer}
+.it:first-child{border-top:0}
+.it:active{background:#f4f7fb}
+.it .t{font-weight:600}
+.it.sel{background:#f3f8ee}
+.pill{flex:none;padding:4px 10px;border-radius:99px;background:var(--ok-l);color:var(--ok);font-weight:700;font-size:14px;white-space:nowrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;vertical-align:middle}
+.badge.ok{background:var(--ok-l);color:var(--ok)} .badge.gr{background:#eef1f4;color:var(--mu)} .badge.w{background:var(--warn-l);color:var(--warn)} .badge.b{background:var(--bad-l);color:var(--bad)}
+.chev{color:#9aa5b1;font-size:20px}
+
+/* groups */
+.grp{margin-bottom:10px;background:#fff;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.grp>button.gh{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 14px;border:0;background:#fff;font-weight:700;font-size:16.5px;text-align:left;cursor:pointer}
+.grp .cnt{min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--pri);color:#fff;font-size:13px;display:grid;place-items:center}
+
+/* summary */
+.tp-card{background:linear-gradient(135deg,var(--pri),#1473c9);color:#fff;border:0}
+.tp-card .big{font-size:22px;font-weight:800;line-height:1.2}
+.tp-card .mu{color:#d7e6f7}
+.tp-card .lnk{flex:none;width:44px;height:44px;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:12px;font-size:20px;cursor:pointer}
+.stats{display:flex;gap:8px;margin-top:10px}
+.stat{flex:1;background:rgba(255,255,255,.15);border-radius:10px;padding:8px;text-align:center}
+.stat b{display:block;font-size:20px}
+
+/* bottom bar */
+.bbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:rgba(255,255,255,.97);border-top:1px solid var(--bd);padding:10px 14px calc(10px + var(--safe-b));backdrop-filter:blur(6px)}
+.bbar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:10px}
+
+/* photos */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.th{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#e9edf2;border:0;padding:0;cursor:pointer}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .st{position:absolute;right:4px;bottom:4px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.add-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;aspect-ratio:1;border:2px dashed #b9c4d0;border-radius:10px;background:#f8fafc;color:var(--pri);font-weight:600;font-size:13px;cursor:pointer}
+.add-ph b{font-size:26px}
+.gp-row{padding:12px 14px;border-top:1px solid var(--bd)}
+.gp-row:first-child{border-top:0}
+
+/* sheet */
+.bd{position:fixed;inset:0;z-index:40;background:rgba(10,20,30,.45);animation:fi .15s}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:92vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:8px 16px calc(16px + var(--safe-b));animation:su .2s ease-out}
+.sheet .grab{width:44px;height:5px;border-radius:9px;background:#d0d6de;margin:4px auto 10px}
+.sheet h3{margin:0 0 4px;font-size:19px}
+@media(min-width:680px){.sheet{max-width:640px;margin:0 auto}}
+@keyframes su{from{transform:translateY(40px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes fi{from{opacity:0}}
+.qty{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center}
+.qty button{height:56px;border:1.5px solid var(--bd);border-radius:12px;background:#fff;font-size:26px;font-weight:700;color:var(--pri);cursor:pointer}
+.err{color:var(--bad);font-size:14px;font-weight:600;margin-top:6px}
+.warn{background:var(--warn-l);color:#6b4a00;border:1px solid #f0d58a;border-radius:12px;padding:10px 12px;font-size:14.5px;margin-bottom:10px}
+.info{background:var(--pri-l);color:#12406e;border-radius:12px;padding:10px 12px;font-size:14.5px;margin-bottom:10px}
+
+/* send */
+.prog{height:10px;border-radius:9px;background:#e3e8ee;overflow:hidden;margin:12px 0}
+.prog i{display:block;height:100%;background:var(--pri);transition:width .3s}
+.spin{width:54px;height:54px;border:5px solid #dbe5f1;border-top-color:var(--pri);border-radius:50%;margin:10px auto 16px;animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.big-ok{font-size:64px;line-height:1;margin:6px 0 8px}
+
+.toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);z-index:60;max-width:92vw;background:#1f2933;color:#fff;padding:12px 16px;border-radius:12px;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:fi .15s}
+.logo{width:84px;height:84px;border-radius:20px;display:block;margin:18px auto 10px}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<header class="bar">
+  <button class="ib hidden" id="back" aria-label="Орқага">←</button>
+  <h1 id="title">Нуқсон</h1>
+  <span class="net" id="net">●</span>
+</header>
+<main id="app"></main>
+<div id="bbar"></div>
+<div id="layer"></div>
+<input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="gal" accept="image/*" multiple class="hidden">
+<script>
+'use strict';
+/* ================= Ёрдамчилар ================= */
+const APP_VER = '1.0';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+const fmtQ = q => String(Math.round(q * 1000) / 1000).replace('.', ',');
+const num = t => { const n = parseFloat(String(t).replace(',', '.').replace(/\s/g, '')); return isNaN(n) ? null : n; };
+const nu = u => { u = String(u || '').toLowerCase().replace(/\.+$/, '').trim();
+  if (/^(шт|дона|та)$/.test(u)) return 'дона'; if (/^(м|метр)$/.test(u)) return 'метр';
+  if (/^(ком-т|к-т|1ком|компл|комплект)$/.test(u)) return 'к-т'; return u; };
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('Хотира тўлди: ' + e.message); } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { } }
+};
+
+/* ================= Ҳолат ================= */
+const Q = new URLSearchParams(location.search);
+if (Q.get('k')) LS.set('nq_k', Q.get('k').trim().toUpperCase());
+if (Q.get('api')) LS.set('nq_api', Q.get('api').trim());
+if (Q.get('k') || Q.get('api')) history.replaceState(null, '', location.pathname);
+
+const S = {
+  k: LS.get('nq_k', ''),
+  api: (window.NUQSON_API || '').trim() || LS.get('nq_api', ''),
+  data: LS.get('nq_data', null),
+  draft: LS.get('nq_draft', null),
+  view: 'home', openG: -1, q: '', tpq: '', manual: false,
+  send: null, docs: null, syncAt: 0, installEvt: null, loadErr: ''
+};
+const saveDraft = () => LS.set('nq_draft', S.draft);
+
+/* ================= IndexedDB (расмлар) ================= */
+let dbp;
+const openDB = () => dbp || (dbp = new Promise((res, rej) => {
+  const r = indexedDB.open('nuqson', 1);
+  r.onupgradeneeded = () => { const s = r.result.createObjectStore('ph', { keyPath: 'pid' }); s.createIndex('did', 'did'); };
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+}));
+const rq = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const store = async m => (await openDB()).transaction('ph', m).objectStore('ph');
+const PH = {
+  put: async o => rq((await store('readwrite')).put(o)),
+  get: async id => rq((await store('readonly')).get(id)),
+  del: async id => rq((await store('readwrite')).delete(id)),
+  byDid: async did => rq((await store('readonly')).index('did').getAll(did)),
+  all: async () => rq((await store('readonly')).getAll())
+};
+const TH = new Map();                       // pid -> object URL
+const PHST = new Map();                     // pid -> юкланганми (true/false)
+async function thumbs() {
+  for (const img of document.querySelectorAll('img[data-pid]')) {
+    const pid = img.dataset.pid;
+    if (!TH.has(pid)) { const p = await PH.get(pid).catch(() => null); if (!p) continue; TH.set(pid, URL.createObjectURL(p.blob)); PHST.set(pid, !!p.id); }
+    img.src = TH.get(pid);
+    const st = img.parentElement.querySelector('.st'); if (st) st.textContent = PHST.get(pid) ? '✓' : '⏳';
+  }
+}
+
+/* ================= Сервер билан алоқа ================= */
+class ApiErr extends Error { constructor(code, msg) { super(msg || code); this.code = code; } }
+async function api(a, body, ms) {
+  if (!S.api) throw new ApiErr('noapi', 'Сервер манзили йўқ');
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 30000);
+  try {
+    const r = await fetch(S.api, { method: 'POST', body: JSON.stringify(Object.assign({ app: 1, a, k: S.k }, body || {})), signal: ctl.signal, redirect: 'follow' });
+    const j = await r.json();
+    if (j.err) throw new ApiErr(j.err, j.msg);
+    return j;
+  } catch (e) {
+    if (e instanceof ApiErr) throw e;
+    throw new ApiErr('net', e.name === 'AbortError' ? 'Жавоб келмади' : 'Интернет билан муаммо');
+  } finally { clearTimeout(t); }
+}
+
+async function sync(force) {
+  if (!S.k || !S.api) return;
+  try {
+    const r = await api('init', { v: force ? '' : (S.data && S.data.v) });
+    if (r.same && S.data) S.data.me = r.me; else S.data = r;
+    LS.set('nq_data', S.data); S.syncAt = Date.now(); S.loadErr = '';
+    if (S.view === 'login') go('home', 'replace'); else render();
+  } catch (e) {
+    if (e.code === 'key') { S.k = ''; LS.del('nq_k'); S.loadErr = 'Кириш коди эскирган ёки бекор қилинган. Ботдан янги код олинг.'; go('login', 'replace'); }
+    else if (!S.data) { S.loadErr = e.message; render(); }
+  }
+}
+
+/* ---- расмларни фонда юклаш ---- */
+let pumping = false;
+async function pump() {
+  if (pumping || !navigator.onLine || !S.k || !S.api) return;
+  pumping = true; let fails = 0;
+  try {
+    for (;;) {
+      const all = (await PH.all()).filter(p => !p.id).sort((a, b) => a.t - b.t);
+      netBadge(all.length);
+      if (!all.length) break;
+      const p = all[0];
+      try {
+        const data = await b64(p.blob);
+        const r = await api('photo', { did: p.did, pid: p.pid, name: p.name, data }, 120000);
+        p.id = r.id; await PH.put(p); PHST.set(p.pid, true); fails = 0;
+        document.querySelectorAll('img[data-pid="' + p.pid + '"]').forEach(i => { const s = i.parentElement.querySelector('.st'); if (s) s.textContent = '✓'; });
+      } catch (e) {
+        if (e.code === 'key') break;
+        if (++fails >= 4 || !navigator.onLine) break;
+        await sleep(3000 * fails);
+      }
+    }
+  } finally { pumping = false; netBadge(); }
+}
+const b64 = blob => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1]); f.onerror = () => rej(f.error); f.readAsDataURL(blob); });
+async function netBadge(n) {
+  if (n == null) n = (await PH.all().catch(() => [])).filter(p => !p.id).length;
+  const el = $('#net'); const on = navigator.onLine;
+  el.className = 'net' + (on ? '' : ' off');
+  el.textContent = on ? (n ? '📤 ' + n : '● онлайн') : '● интернетсиз' + (n ? ' · ' + n : '');
+}
+
+/* ---- расмни кичрайтириш ---- */
+function shrink(file) {
+  return new Promise(res => {
+    const u = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const max = 1600, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      c.toBlob(b => res(b || file), 'image/jpeg', 0.72);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); res(file); };
+    img.src = u;
+  });
+}
+let photoCb = null;
+function pickPhoto(cb, gallery) { photoCb = cb; const el = gallery ? $('#gal') : $('#cam'); el.value = ''; el.click(); }
+for (const id of ['cam', 'gal']) $('#' + id).addEventListener('change', async e => {
+  const files = [...e.target.files]; if (!files.length || !photoCb) return;
+  const cb = photoCb; toast('📷 Сақланмоқда…');
+  for (const f of files) {
+    const blob = await shrink(f), pid = uid();
+    await PH.put({ pid, did: S.draft.did, name: cb.name, blob, id: null, t: Date.now() });
+    cb.add(pid);
+  }
+  saveDraft(); cb.done && cb.done(); netBadge(); pump();
+});
+
+/* ================= Маълумотлар ================= */
+const M = () => S.data;
+const matOf = id => M().mats.find(m => m[0] === String(id));
+const unitsOf = m => [...new Set([m[3], 'дона', 'метр'])];
+const smHas = (tp, kva) => M().sm.some(s => s[0] === tp && s[1] === kva);
+const mfyOf = tp => { const t = M().tps.find(x => x[0] === tp); return t ? t[2] : ''; };
+const mfyTxt = m => !m ? '' : (/МФЙ$/i.test(m) ? m : m + ' МФЙ');
+function photoCount(d) { let n = 0; for (const k in d.items) n += (d.items[k].ph || []).length; for (const k in d.gp) n += d.gp[k].length; return n; }
+function gpDone(d) { return M().photos.filter((_, i) => d.gp[i] && d.gp[i].length).length; }
+function warnings(d) {
+  const w = [], sel = Object.keys(d.items).map(matOf).filter(Boolean);
+  for (const m of sel) {
+    if (m[7] || m[8]) continue;
+    const it = d.items[m[0]], cat = M().cats[m[6]];
+    if (!cat) continue;
+    if (sel.some(x => x[6] === m[6] && x[7]) || nu(it.u) === nu(cat[1])) continue;
+    const prov = M().mats.find(x => x[6] === m[6] && x[7]);
+    const msg = '«' + cat[0] + '» иши учун миқдор йўқ' + (prov ? ' — «' + prov[1] + '» ни ҳам (' + cat[1] + ' да) белгиланг.' : '.');
+    if (!w.includes(msg)) w.push(msg);
+  }
+  return w;
+}
+function newDraft() {
+  return { did: uid(), bolim: M().me.admin ? '' : M().me.bolim, tp: '', kva: '', mfy: '', items: {}, gp: {}, t: Date.now() };
+}
+async function dropDraft() {
+  if (!S.draft) return;
+  for (const p of await PH.byDid(S.draft.did).catch(() => [])) { await PH.del(p.pid); if (TH.has(p.pid)) { URL.revokeObjectURL(TH.get(p.pid)); TH.delete(p.pid); } }
+  S.draft = null; LS.del('nq_draft'); netBadge();
+}
+
+/* ================= Навигация ================= */
+let SHEET = false;
+function go(v, mode) {
+  S.view = v;
+  if (mode === 'replace') history.replaceState({ v }, ''); else if (mode !== 'none') history.pushState({ v }, '');
+  render(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', e => {
+  if (SHEET) { closeSheet(true); return; }
+  if (S.view === 'send' && S.send && !['done', 'err'].includes(S.send.stage)) { history.pushState({ v: 'send' }, ''); toast('Юборилмоқда — кутинг'); return; }
+  S.view = (e.state && e.state.v) || 'home';
+  if (S.view === 'send') S.view = 'home';
+  render();
+});
+$('#back').onclick = () => history.back();
+
+/* ================= Кўринишлар ================= */
+function render() {
+  const v = S.view, a = $('#app'), bb = $('#bbar');
+  bb.innerHTML = '';
+  $('#back').classList.toggle('hidden', v === 'home' || v === 'login' || (v === 'send' && S.send && !['done', 'err'].includes(S.send.stage)));
+  if (v !== 'login' && !S.data) { $('#title').textContent = 'Нуқсон'; a.innerHTML = S.loadErr ? errBox(S.loadErr) : '<div class="spin"></div><p class="center mu">Маълумотлар юкланмоқда…</p>'; return; }
+  const V = { login: vLogin, home: vHome, tp: vTp, act: vAct, photos: vPhotos, review: vReview, send: vSend, docs: vDocs }[v] || vHome;
+  V(a, bb);
+  thumbs();
+}
+function errBox(m) {
+  return '<div class="card center"><div class="big-ok">⚠️</div><p>' + esc(m) + '</p><button class="btn pri" onclick="sync(true)">Қайта уриниш</button></div>';
+}
+
+/* ---- кириш ---- */
+function vLogin(a) {
+  $('#title').textContent = 'Кириш';
+  a.innerHTML = '<img class="logo" src="icon-192.png" alt="">' +
+    '<h2 class="center" style="margin:0 0 4px">Учкўприк ТЭТК</h2><p class="center mu" style="margin:0 0 18px">Нуқсон далолатномаси</p>' +
+    (S.loadErr ? '<div class="warn">' + esc(S.loadErr) + '</div>' : '') +
+    '<div class="card"><label class="fld"><span>Кириш коди (8 белги)</span>' +
+    '<input id="code" class="inp code" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" value="' + esc(S.k) + '"></label>' +
+    (S.api ? '' : '<label class="fld"><span>Сервер манзили (…/exec)</span><input id="apiu" class="inp" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec"></label>') +
+    '<button class="btn pri lg" id="go">Кириш</button>' +
+    '<p class="mu sm" style="margin:12px 0 0">Кодни олиш: Telegram\'даги нуқсон ботида <b>📱 Илова</b> тугмасини босинг.</p></div>';
+  $('#go').onclick = async () => {
+    const k = $('#code').value.trim().toUpperCase(); const au = $('#apiu') ? $('#apiu').value.trim() : S.api;
+    if (k.length < 6) return toast('Кодни тўлиқ ёзинг');
+    if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(au)) return toast('Сервер манзили нотўғри');
+    S.k = k; S.api = au; LS.set('nq_k', k); LS.set('nq_api', au);
+    $('#go').disabled = true; $('#go').textContent = 'Текширилмоқда…';
+    S.loadErr = ''; await sync(true);
+    if (S.view === 'login') render();
+  };
+}
+
+/* ---- бош саҳифа ---- */
+function vHome(a) {
+  const me = M().me, d = S.draft;
+  $('#title').textContent = 'Нуқсон — Учкўприк ТЭТК';
+  let h = '<div class="card row-flex"><div style="font-size:34px">👷</div><div class="grow"><div style="font-weight:700;font-size:18px">' + esc(me.admin ? 'Админ' : me.name) + '</div>' +
+    '<div class="mu sm">' + esc(me.admin ? 'барча бўлимлар' : me.bolim + ' бўлим устаси') + '</div></div></div>';
+  if (d && d.tp) {
+    const n = Object.keys(d.items).length;
+    h += '<div class="card" style="border-color:#b9d3ee"><div class="row-flex"><div class="grow"><div class="xs mu">ҚОРАЛАМА</div>' +
+      '<div style="font-weight:700;font-size:18px">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
+      '<div class="mu sm">' + n + ' та нуқсон · ' + photoCount(d) + ' та расм</div></div></div>' +
+      '<div class="btns two" style="margin-top:12px"><button class="btn bad" id="del">Ўчириш</button><button class="btn pri" id="cont">Давом эттириш</button></div></div>';
+  }
+  h += '<div class="btns" style="margin-top:6px"><button class="btn pri lg" id="new">➕ Янги нуқсон далолатномаси</button>' +
+    '<button class="btn lg" id="docs">📄 Ҳужжатларим</button></div>';
+  if (S.installEvt) h += '<div class="card" style="margin-top:14px"><div class="row-flex"><div class="grow"><b>Иловани ўрнатинг</b><div class="mu sm">Телефон экранида белги пайдо бўлади</div></div><button class="btn pri" style="width:auto" id="inst">Ўрнатиш</button></div></div>';
+  else if (/iphone|ipad/i.test(navigator.userAgent) && !navigator.standalone) h += '<div class="info" style="margin-top:14px">iPhone: Safari\'да <b>⎋ Поделиться</b> → <b>«На экран Домой»</b> ни босинг — илова экранда туради.</div>';
+  h += '<p class="center mu xs" style="margin-top:26px">Смета: ' + esc(M().year || '—') + ' · ТПлар: ' + M().tps.length + ' · v' + APP_VER +
+    '<br><button class="btn ghost" style="width:auto;display:inline-flex;min-height:36px;font-size:13px" id="out">Чиқиш</button></p>';
+  a.innerHTML = h;
+  $('#new').onclick = async () => {
+    if (d && Object.keys(d.items).length && !confirm('Қоралама ўчирилиб, янгиси бошлансинми?')) return;
+    await dropDraft(); S.draft = newDraft(); saveDraft(); S.tpq = ''; S.manual = false; S.tpFromAct = false; go('tp');
+  };
+  $('#docs').onclick = () => { S.docs = null; go('docs'); loadDocs(); };
+  if ($('#cont')) $('#cont').onclick = () => go('act');
+  if ($('#del')) $('#del').onclick = async () => { if (confirm('Қоралама ва унинг расмлари ўчирилсинми?')) { await dropDraft(); render(); } };
+  if ($('#inst')) $('#inst').onclick = async () => { S.installEvt.prompt(); await S.installEvt.userChoice; S.installEvt = null; render(); };
+  $('#out').onclick = async () => { if (!confirm('Иловадан чиқилсинми? Қоралама ўчади.')) return; await dropDraft(); LS.del('nq_k'); LS.del('nq_data'); S.k = ''; S.data = null; go('login', 'replace'); };
+}
+
+/* ---- ТП танлаш ---- */
+function vTp(a) {
+  const d = S.draft, me = M().me;
+  $('#title').textContent = 'ТП танлаш';
+  let h = '';
+  if (me.admin) {
+    h += '<div class="sec-t">Бўлим</div><div class="chips" style="margin-bottom:6px">' +
+      M().us.map(u => '<button class="chip' + (d.bolim === u[0] ? ' on' : '') + '" data-b="' + esc(u[0]) + '">' + esc(u[0]) + ' · ' + esc(u[1]) + '</button>').join('') + '</div>';
+  }
+  h += '<div class="sec-t">ТП рақами</div><div class="search"><input id="tpq" class="inp" inputmode="numeric" autocomplete="off" placeholder="Масалан: 165" value="' + esc(S.tpq) + '"></div>' +
+    '<div id="tpres" style="margin-top:12px"></div>';
+  a.innerHTML = h;
+  a.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { d.bolim = b.dataset.b; saveDraft(); a.querySelectorAll('[data-b]').forEach(x => x.classList.toggle('on', x === b)); });
+  const inp = $('#tpq');
+  inp.oninput = () => { S.tpq = inp.value.trim(); tpResults(); };
+  tpResults();
+  if (!S.tpq && !me.admin) setTimeout(() => inp.focus(), 50);
+}
+function tpResults() {
+  const q = S.tpq.toLowerCase(), box = $('#tpres'); let h = '';
+  const row = (tp, kva, mfy, sm) => '<button class="it" data-tp="' + esc(tp) + '" data-kva="' + esc(kva) + '"><div class="grow"><div class="t" style="font-size:18px">ТП-' + esc(tp) +
+    ' <span class="mu" style="font-weight:500">/ ' + esc(kva) + ' кВА</span></div><div class="mu sm">' + esc(mfy || '—') + '</div></div>' +
+    (sm ? '<span class="badge ok">Смета ' + esc(M().year) + '</span>' : '<span class="badge gr">сметада йўқ</span>') + '</button>';
+  if (!q) {
+    const sm = [...M().sm].sort((x, y) => (+x[0] - +y[0]) || (+x[1] - +y[1]));
+    h = sm.length ? '<div class="sec-t" style="margin-top:4px">Сметадаги ТПлар (' + sm.length + ')</div><div class="chips">' +
+      sm.map(s => '<button class="chip" data-tp="' + esc(s[0]) + '" data-kva="' + esc(s[1]) + '">ТП-' + esc(s[0]) + '/' + esc(s[1]) + '</button>').join('') + '</div>'
+      : '<p class="mu">ТП рақамини ёзинг.</p>';
+  } else {
+    const sm = M().sm.filter(s => s[0].toLowerCase().startsWith(q));
+    const tl = M().tps.filter(t => t[0].toLowerCase().startsWith(q) && !smHas(t[0], t[1]));
+    const all = sm.map(s => [s[0], s[1], mfyOf(s[0]), 1]).concat(tl.map(t => [t[0], t[1], t[2], 0]))
+      .sort((x, y) => ((x[0].toLowerCase() === q ? 0 : 1) - (y[0].toLowerCase() === q ? 0 : 1)) || (y[3] - x[3]) || (parseInt(x[0]) - parseInt(y[0])) || x[0].localeCompare(y[0])).slice(0, 40);
+    h = all.length ? '<div class="list">' + all.map(x => row(x[0], x[1], x[2], x[3])).join('') + '</div>' : '<p class="mu center">«' + esc(S.tpq) + '» топилмади.</p>';
+  }
+  h += S.manual ? manualForm() : '<button class="btn ghost" id="man" style="margin-top:6px">Рўйхатда йўқ ТП — қўлда киритиш</button>';
+  box.innerHTML = h;
+  box.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => pickTp(b.dataset.tp, b.dataset.kva, mfyOf(b.dataset.tp)));
+  if ($('#man')) $('#man').onclick = () => { S.manual = true; tpResults(); };
+  if (S.manual) {
+    let kv = '';
+    box.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { kv = b.dataset.kv; box.querySelectorAll('[data-kv]').forEach(x => x.classList.toggle('on', x === b)); $('#mkva').value = kv; });
+    $('#mok').onclick = () => {
+      const tp = $('#mtp').value.trim().replace(/^ТП[-\s№]*/i, ''), kva = $('#mkva').value.trim(), mfy = $('#mmfy').value.trim();
+      if (!tp) return toast('ТП рақамини ёзинг'); if (!num(kva)) return toast('Қувватни танланг');
+      pickTp(tp, String(num(kva)), mfy);
+    };
+  }
+}
+function manualForm() {
+  return '<div class="card" style="margin-top:10px"><h2>Қўлда киритиш</h2><label class="fld"><span>ТП рақами</span><input id="mtp" class="inp" value="' + esc(S.tpq) + '"></label>' +
+    '<div class="fld"><span>Қуввати, кВА</span><div class="chips">' + ['25', '40', '63', '100', '160', '250', '320', '400', '630', '1000'].map(k => '<button class="chip sm" data-kv="' + k + '">' + k + '</button>').join('') +
+    '</div><input id="mkva" class="inp" inputmode="numeric" placeholder="ёки ёзинг" style="margin-top:8px"></div>' +
+    '<label class="fld"><span>МФЙ</span><input id="mmfy" class="inp" placeholder="ихтиёрий"></label><button class="btn pri" id="mok">Давом этиш</button></div>';
+}
+function pickTp(tp, kva, mfy) {
+  const d = S.draft;
+  if (M().me.admin && !d.bolim) { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); }
+  d.tp = tp; d.kva = kva; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
+  if (S.tpFromAct) { S.tpFromAct = false; history.back(); } else go('act', 'replace');
+}
+
+/* ---- нуқсонлар ---- */
+function vAct(a, bb) {
+  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
+  $('#title').textContent = 'Нуқсонлар';
+  const n = Object.keys(d.items).length, sm = smHas(d.tp, d.kva);
+  let h = '<div class="card tp-card"><div class="row-flex"><div class="grow"><div class="big">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
+    '<div class="mu sm">' + esc(mfyTxt(d.mfy) || '—') + (M().me.admin ? ' · ' + esc(d.bolim) : '') + '</div></div><button class="lnk" id="chg" aria-label="ТП ни ўзгартириш" title="ТП ни ўзгартириш">✎</button></div>' +
+    '<div class="stats"><div class="stat"><b>' + n + '</b>нуқсон</div><div class="stat"><b>' + photoCount(d) + '</b>расм</div><div class="stat"><b>' + (sm ? '✓' : '—') + '</b>смета</div></div></div>';
+  h += '<div class="search" style="margin-bottom:12px"><input id="q" class="inp" placeholder="Нуқсон қидириш (масалан: изолятор)" value="' + esc(S.q) + '" autocomplete="off"></div><div id="mlist"></div>';
+  a.innerHTML = h;
+  $('#chg').onclick = () => { S.tpq = d.tp; S.tpFromAct = true; go('tp'); };
+  const q = $('#q'); q.oninput = () => { S.q = q.value; matList(); };
+  matList();
+  bb.innerHTML = '<div class="bbar"><div class="in"><button class="btn" id="gpb" style="width:auto">📷 ' + gpDone(d) + '/' + M().photos.length + '</button>' +
+    '<button class="btn pri" id="rev"' + (n ? '' : ' disabled') + '>Кўриш ва юбориш →</button></div></div>';
+  $('#gpb').onclick = () => go('photos');
+  $('#rev').onclick = () => go('review');
+}
+function matRow(m) {
+  const it = S.draft.items[m[0]];
+  return '<button class="it' + (it ? ' sel' : '') + '" data-m="' + m[0] + '"><div class="grow"><div class="t">' + esc(m[1]) + '</div>' +
+    (it ? '<div class="mu xs">' + esc(it.rsn || '') + (it.note ? ' · ' + esc(it.note) : '') + ((it.ph || []).length ? ' · 📷' + it.ph.length : '') + '</div>' : '') + '</div>' +
+    (it ? '<span class="pill">' + fmtQ(it.q) + ' ' + esc(it.u) + '</span>' : '<span class="chev">＋</span>') + '</button>';
+}
+function matList() {
+  const box = $('#mlist'), q = S.q.trim().toLowerCase(), D = M();
+  let h = '';
+  if (q) {
+    const r = D.mats.filter(m => m[1].toLowerCase().includes(q));
+    h = r.length ? '<div class="list">' + r.map(matRow).join('') + '</div>' : '<p class="mu center">Топилмади</p>';
+  } else {
+    h = D.groups.map((g, gi) => {
+      const ms = D.mats.filter(m => m[2] === gi); if (!ms.length) return '';
+      const cnt = ms.filter(m => S.draft.items[m[0]]).length, open = S.openG === gi;
+      return '<div class="grp"><button class="gh" data-g="' + gi + '"><span class="grow">' + esc(g) + '</span>' + (cnt ? '<span class="cnt">' + cnt + '</span>' : '') +
+        '<span class="chev">' + (open ? '▴' : '▾') + '</span></button>' + (open ? ms.map(matRow).join('') : '') + '</div>';
+    }).join('');
+  }
+  box.innerHTML = h;
+  box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = +b.dataset.g; S.openG = S.openG === g ? -1 : g; matList(); if (S.openG === g) b.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => itemSheet(b.dataset.m));
+}
+
+/* ---- битта нуқсон (пастдан очиладиган ойна) ---- */
+function openSheet(html) {
+  $('#layer').innerHTML = '<div class="bd" id="bdrop"></div><div class="sheet" role="dialog"><div class="grab"></div>' + html + '</div>';
+  $('#bdrop').onclick = () => closeSheet();
+  if (!SHEET) { SHEET = true; history.pushState({ v: S.view, sh: 1 }, ''); }
+}
+function closeSheet(fromPop) {
+  if (!SHEET) return;
+  SHEET = false; $('#layer').innerHTML = '';
+  if (!fromPop) history.back(); else render();
+}
+function itemSheet(mid) {
+  const m = matOf(mid), d = S.draft, ex = d.items[mid];
+  const it = ex ? JSON.parse(JSON.stringify(ex)) : { q: '', u: m[3], rsn: m[5] || '', note: '', ph: [] };
+  const reasons = [...new Set([m[5], ...M().reasons].filter(Boolean))];
+  const drawPh = () => {
+    $('#iph').innerHTML = it.ph.map(p => '<button class="th" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
+      '<button class="add-ph" id="cam1"><b>📷</b>Расм олиш</button><button class="add-ph" id="gal1"><b>🖼</b>Галерея</button>';
+    $('#cam1').onclick = () => pickPhoto({ name: m[1], add: p => it.ph.push(p), done: () => { persist(false); drawPh(); } });
+    $('#gal1').onclick = () => pickPhoto({ name: m[1], add: p => it.ph.push(p), done: () => { persist(false); drawPh(); } }, true);
+    $('#iph').querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      if (!confirm('Расм ўчирилсинми?')) return;
+      it.ph = it.ph.filter(x => x !== b.dataset.p); await PH.del(b.dataset.p); persist(false); drawPh();
+    });
+    thumbs();
+  };
+  // расм олинганда миқдор ҳали киритилмаган бўлса ҳам расм йўқолмасин
+  const persist = (final) => {
+    if (d.items[mid]) { d.items[mid].ph = it.ph; saveDraft(); }
+    else if (!final) { S._pendingPh = S._pendingPh || {}; S._pendingPh[mid] = it.ph; }
+  };
+  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc(M().groups[m[2]]) + (M().cats[m[6]] ? ' → ' + esc(M().cats[m[6]][0]) : '') + '</div>' +
+    '<div class="fld"><span>Миқдори</span><div class="qty"><button id="mn">−</button><input id="qv" class="inp big" inputmode="decimal" value="' + esc(it.q === '' ? '' : fmtQ(it.q)) + '" placeholder="0"><button id="pl">+</button></div>' +
+    '<div id="qerr" class="err hidden"></div>' + (m[4] ? '<div class="mu xs" style="margin-top:6px">Энг кўпи: ' + fmtQ(m[4]) + ' ' + esc(m[3]) + ' (1 ТП га)</div>' : '') + '</div>' +
+    '<div class="fld"><span>Ўлчов бирлиги</span><div class="seg" id="useg">' + unitsOf(m).map(u => '<button data-u="' + esc(u) + '" class="' + (u === it.u ? 'on' : '') + '">' + esc(u) + '</button>').join('') + '</div></div>' +
+    '<div class="fld"><span>Сабаби</span><div class="chips" id="rch">' + reasons.map(r => '<button class="chip sm' + (r === it.rsn ? ' on' : '') + '" data-r="' + esc(r) + '">' + esc(r) + '</button>').join('') + '</div>' +
+    '<input id="rv" class="inp" style="margin-top:8px" placeholder="ёки ўзингиз ёзинг" value="' + esc(reasons.includes(it.rsn) ? '' : it.rsn) + '"></div>' +
+    '<label class="fld"><span>Изоҳ (фаза, таянч №) — ихтиёрий</span><input id="nv" class="inp" value="' + esc(it.note) + '" placeholder="масалан: ф-1 да 2, ф-2 да 1"></label>' +
+    '<div class="fld"><span>Расмлар</span><div class="thumbs" id="iph"></div></div>' +
+    '<div class="btns' + (ex ? ' two' : '') + '" style="margin-top:6px">' + (ex ? '<button class="btn bad" id="rm">Олиб ташлаш</button>' : '') + '<button class="btn pri lg" id="ok">Сақлаш</button></div>');
+  if (S._pendingPh && S._pendingPh[mid] && !ex) it.ph = S._pendingPh[mid];
+  drawPh();
+  const qv = $('#qv');
+  const step = m[4] && m[4] < 1 ? 0.05 : 1;
+  $('#mn').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.max(0, Math.round((v - step) * 100) / 100)); };
+  $('#pl').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.round((v + step) * 100) / 100); };
+  $('#useg').querySelectorAll('[data-u]').forEach(b => b.onclick = () => { it.u = b.dataset.u; $('#useg').querySelectorAll('[data-u]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#rch').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { it.rsn = b.dataset.r; $('#rv').value = ''; $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#rv').oninput = e => { if (e.target.value.trim()) $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.remove('on')); };
+  if (!ex) setTimeout(() => qv.focus(), 250);
+  $('#ok').onclick = () => {
+    const q = num(qv.value), err = $('#qerr');
+    const bad = t => { err.textContent = t; err.classList.remove('hidden'); qv.focus(); };
+    if (q == null || q <= 0) return bad('Миқдорни ёзинг (масалан 2 ёки 12,5)');
+    if (m[4] && nu(it.u) === nu(m[3]) && q > m[4] + 1e-9) return bad(m[1] + ' ' + fmtQ(m[4]) + ' ' + m[3] + ' дан ошмаслиги керак');
+    const rv = $('#rv').value.trim(); if (rv) it.rsn = rv;
+    d.items[mid] = { q: Math.round(q * 1000) / 1000, u: it.u, rsn: it.rsn, note: $('#nv').value.trim(), ph: it.ph };
+    if (S._pendingPh) delete S._pendingPh[mid];
+    saveDraft(); closeSheet(); toast('✓ ' + m[1] + ' — ' + fmtQ(q) + ' ' + it.u);
+  };
+  if (ex) $('#rm').onclick = async () => {
+    if (!confirm('«' + m[1] + '» олиб ташлансинми?')) return;
+    for (const p of it.ph) await PH.del(p);
+    delete d.items[mid]; saveDraft(); closeSheet();
+  };
+}
+
+/* ---- умумий расмлар ---- */
+function vPhotos(a) {
+  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
+  $('#title').textContent = 'Умумий расмлар';
+  a.innerHTML = '<div class="info">Изоҳ талаби: ҳар бир мукаммал таъмирланадиган ТП нинг расми олинади. Ҳар бир турга камида битта расм.</div><div class="list" id="gpl">' +
+    M().photos.map((t, i) => {
+      const arr = d.gp[i] || [];
+      return '<div class="gp-row"><div class="row-flex" style="margin-bottom:8px"><div class="grow" style="font-weight:600">' + (arr.length ? '✅ ' : '⬜ ') + esc(t) + '</div></div><div class="thumbs">' +
+        arr.map(p => '<button class="th" data-i="' + i + '" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
+        '<button class="add-ph" data-c="' + i + '"><b>📷</b>Расм</button>' + (arr.length ? '' : '<button class="add-ph" data-gl="' + i + '"><b>🖼</b>Галерея</button>') + '</div></div>';
+    }).join('') + '</div>';
+  const add = (i, gal) => pickPhoto({ name: 'Умумий_' + M().photos[i], add: p => { (d.gp[i] = d.gp[i] || []).push(p); }, done: () => render() }, gal);
+  a.querySelectorAll('[data-c]').forEach(b => b.onclick = () => add(+b.dataset.c));
+  a.querySelectorAll('[data-gl]').forEach(b => b.onclick = () => add(+b.dataset.gl, true));
+  a.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+    if (!confirm('Расм ўчирилсинми?')) return;
+    const i = b.dataset.i; d.gp[i] = d.gp[i].filter(x => x !== b.dataset.p); await PH.del(b.dataset.p); saveDraft(); render();
+  });
+}
+
+/* ---- кўриш ва юбориш ---- */
+async function vReview(a, bb) {
+  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
+  $('#title').textContent = 'Кўриш ва юбориш';
+  const D = M(), w = warnings(d), miss = D.photos.length - gpDone(d);
+  let h = '<div class="card"><div class="xs mu">ТП</div><div style="font-size:20px;font-weight:800">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
+    '<div class="mu sm">' + esc(mfyTxt(d.mfy) || '—') + ' · ' + esc(d.bolim) + ' бўлим' + (smHas(d.tp, d.kva) ? ' · <span class="badge ok">смета</span>' : ' · <span class="badge gr">сметада йўқ</span>') + '</div></div>';
+  w.forEach(x => h += '<div class="warn">⚠️ ' + esc(x) + '</div>');
+  if (miss) h += '<div class="warn">📷 Умумий расмлар тўлиқ эмас: ' + miss + ' та тур расмсиз. <a href="#" id="gpl">Қўшиш</a></div>';
+  h += '<div class="sec-t">Нуқсонлар (' + Object.keys(d.items).length + ')</div>';
+  D.groups.forEach((g, gi) => {
+    const ms = D.mats.filter(m => m[2] === gi && d.items[m[0]]); if (!ms.length) return;
+    h += '<div class="xs mu" style="margin:10px 4px 6px;font-weight:600">' + esc(g) + '</div><div class="list">' + ms.map(matRow).join('') + '</div>';
+  });
+  h += '<div id="pend" class="mu sm center" style="margin-top:8px"></div>';
+  a.innerHTML = h;
+  a.querySelectorAll('[data-m]').forEach(b => b.onclick = () => itemSheet(b.dataset.m));
+  if ($('#gpl')) $('#gpl').onclick = e => { e.preventDefault(); go('photos'); };
+  bb.innerHTML = '<div class="bbar"><div class="in" style="grid-template-columns:1fr"><button class="btn ok lg" id="snd">✅ Далолатномани юбориш</button></div></div>';
+  $('#snd').onclick = () => {
+    if (!navigator.onLine) return toast('Интернет йўқ. Қоралама сақланди — алоқа пайдо бўлганда юборинг.');
+    if (w.length && !confirm('Огоҳлантириш бор:\n' + w.join('\n') + '\n\nБарибир юборилсинми?')) return;
+    submit();
+  };
+  const pend = (await PH.byDid(d.did).catch(() => [])).filter(p => !p.id).length;
+  if (pend && $('#pend')) $('#pend').textContent = '📤 ' + pend + ' та расм юкланишни кутмоқда — юборишда юкланади.';
+}
+
+async function submit() {
+  const d = S.draft;
+  S.send = { stage: 'up', done: 0, total: 0 }; go('send', 'replace'); history.pushState({ v: 'send' }, '');
+  // 1) расмлар
+  let last = -1, still = 0;
+  for (;;) {
+    const ps = await PH.byDid(d.did), pend = ps.filter(p => !p.id).length;
+    S.send.total = ps.length; S.send.done = ps.length - pend; drawSend();
+    if (!pend) break;
+    if (!navigator.onLine) return sendErr('Интернет узилди. Қоралама сақланди — алоқа пайдо бўлганда қайта юборинг.');
+    if (pend === last) { if (++still > 150) return sendErr('Расмлар юкланмади. Интернетни текшириб қайта уриниб кўринг.'); } else { still = 0; last = pend; }
+    if (!pumping) pump();
+    await sleep(600);
+  }
+  // 2) далолатнома
+  const map = {}; (await PH.byDid(d.did)).forEach(p => map[p.pid] = p.id);
+  const act = { bolim: d.bolim, tp: d.tp, kva: d.kva, mfy: d.mfy, items: {}, gp: {} };
+  for (const [mid, it] of Object.entries(d.items)) act.items[mid] = { q: it.q, u: it.u, rsn: it.rsn, note: it.note, ph: (it.ph || []).map(p => map[p]).filter(Boolean) };
+  for (const [i, arr] of Object.entries(d.gp)) act.gp[i] = arr.map(p => map[p]).filter(Boolean);
+  S.send = { stage: 'mk', t0: Date.now() }; drawSend();
+  const tick = setInterval(() => S.view === 'send' && S.send && S.send.stage === 'mk' && drawSend(), 1000);
+  let r = null;
+  try { r = await api('submit', { did: d.did, act }, 330000); }
+  catch (e) {
+    if (e.code === 'max' || e.code === 'empty' || e.code === 'bolim' || e.code === 'tp') { clearInterval(tick); return sendErr(e.code === 'max' ? e.message : 'Маълумот тўлиқ эмас (' + e.code + ')', true); }
+    if (e.code === 'key') { clearInterval(tick); return sendErr('Кириш коди бекор қилинган. Ботдан янги код олинг.'); }
+    r = null;
+  }
+  if (!r || r.state === 'busy') r = await poll(d.did);
+  clearInterval(tick);
+  if (r && r.state === 'done') { await dropDraft(); S.send = { stage: 'done', no: r.no, pdf: r.pdf }; drawSend(); }
+  else sendErr(r && r.state === 'busy' ? 'Далолатнома ҳали тайёрланмоқда. Бир оздан кейин «📄 Ҳужжатларим» да текширинг — у Telegram\'га ҳам келади.' : 'Юборилмади. Қоралама сақланди — қайта уриниб кўринг.');
+}
+async function poll(did) {
+  const t0 = Date.now(); let r = { state: 'busy' };
+  while (Date.now() - t0 < 6 * 60000) {
+    await sleep(8000);
+    try { r = await api('status', { did }); } catch (e) { continue; }
+    if (r.state !== 'busy') return r;
+  }
+  return r;
+}
+function sendErr(m, back) { S.send = { stage: 'err', msg: m, back }; drawSend(); }
+function drawSend() { if (S.view === 'send') render(); }
+function vSend(a) {
+  const s = S.send || { stage: 'err', msg: '' };
+  $('#title').textContent = 'Юбориш';
+  if (s.stage === 'up') {
+    const p = s.total ? Math.round(s.done / s.total * 100) : 100;
+    a.innerHTML = '<div class="card center"><div class="spin"></div><h2>Расмлар юкланмоқда</h2><div class="prog"><i style="width:' + p + '%"></i></div><p class="mu">' + s.done + ' / ' + s.total + '</p></div>';
+  } else if (s.stage === 'mk') {
+    const sec = Math.round((Date.now() - s.t0) / 1000);
+    a.innerHTML = '<div class="card center"><div class="spin"></div><h2>Далолатнома тайёрланмоқда</h2><p class="mu">Одатда 30–60 сония · ' + sec + ' с</p>' +
+      '<div class="info" style="text-align:left">Иловани ёпсангиз ҳам далолатнома тайёр бўлади ва Telegram\'га келади.</div></div>';
+  } else if (s.stage === 'done') {
+    a.innerHTML = '<div class="card center"><div class="big-ok">✅</div><h2 style="font-size:22px">' + esc(s.no) + '</h2><p class="mu">Нуқсон далолатномаси тайёр. PDF ва Excel Telegram\'га ҳам юборилди.</p>' +
+      '<div class="btns">' + (s.pdf ? '<a class="btn pri lg" href="' + esc(s.pdf) + '" target="_blank" rel="noopener">📄 PDF ни очиш</a>' : '') + '<button class="btn lg" id="hm">Бош саҳифа</button></div></div>';
+    $('#hm').onclick = () => { S.send = null; go('home', 'replace'); };
+  } else {
+    a.innerHTML = '<div class="card center"><div class="big-ok">⚠️</div><p>' + esc(s.msg) + '</p><div class="btns">' +
+      (s.back ? '<button class="btn pri lg" id="bk">Тузатиш</button>' : '<button class="btn pri lg" id="rt">Қайта юбориш</button>') + '<button class="btn" id="hm">Бош саҳифа</button></div></div>';
+    if ($('#rt')) $('#rt').onclick = () => { if (!S.draft) return go('home', 'replace'); submit(); };
+    if ($('#bk')) $('#bk').onclick = () => { S.send = null; go('review', 'replace'); };
+    $('#hm').onclick = () => { S.send = null; go('home', 'replace'); };
+  }
+}
+
+/* ---- ҳужжатлар ---- */
+async function loadDocs() {
+  try { const r = await api('docs'); S.docs = r.docs; } catch (e) { S.docs = { err: e.message }; }
+  if (S.view === 'docs') render();
+}
+function vDocs(a) {
+  $('#title').textContent = 'Ҳужжатларим';
+  const D = S.docs;
+  if (!D) { a.innerHTML = '<div class="spin"></div>'; return; }
+  if (D.err) { a.innerHTML = '<div class="card center"><p>' + esc(D.err) + '</p><button class="btn pri" id="rl">Қайта уриниш</button></div>'; $('#rl').onclick = () => { S.docs = null; render(); loadDocs(); }; return; }
+  if (!D.length) { a.innerHTML = '<p class="center mu" style="margin-top:40px">Ҳали ҳужжат йўқ.</p>'; return; }
+  const cls = s => /шакллантирилди/.test(s) ? 'gr' : /бажарилди/.test(s) ? 'ok' : /хато/.test(s) ? 'b' : 'w';
+  a.innerHTML = '<div class="list">' + D.map(r => '<div class="it" style="cursor:default"><div class="grow"><div class="t">' + esc(r[0]) + '</div>' +
+    '<div class="mu sm">ТП-' + esc(r[2]) + '/' + esc(r[3]) + ' · ' + esc(r[1]) + (M().me.admin ? ' · ' + esc(r[8]) : '') + '</div>' +
+    '<span class="badge ' + cls(r[5]) + '">' + esc(r[5]) + '</span></div>' +
+    (r[6] ? '<a class="btn" style="width:auto;min-height:40px" href="' + esc(r[6]) + '" target="_blank" rel="noopener">PDF</a>' : '') + '</div>').join('') + '</div>';
+}
+
+/* ================= Бошқалар ================= */
+let tt;
+function toast(m) {
+  clearTimeout(tt); let el = $('#toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = m; el.classList.remove('hidden');
+  tt = setTimeout(() => el.classList.add('hidden'), 2000);
+}
+window.addEventListener('online', () => { netBadge(); pump(); sync(); });
+window.addEventListener('offline', () => netBadge());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { pump(); if (Date.now() - S.syncAt > 10 * 60000) sync(); } });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; if (S.view === 'home') render(); });
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+
+/* ================= Ишга тушириш ================= */
+(function boot() {
+  history.replaceState({ v: 'home' }, '');
+  netBadge();
+  if (!S.k || !S.api) { S.view = 'login'; render(); return; }
+  S.view = 'home'; render();
+  sync().then(pump);
+})();
+</script>
+</body>
+</html>
