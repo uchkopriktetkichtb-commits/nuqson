@@ -155,7 +155,7 @@ main{max-width:640px;margin:0 auto;padding:14px 14px calc(110px + var(--safe-b))
 <script>
 'use strict';
 /* ================= Ёрдамчилар ================= */
-const APP_VER = '1.0';
+const APP_VER = '1.2';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -309,9 +309,23 @@ const unitsOf = m => [...new Set([m[3], 'дона', 'метр'])];
 const smHas = (tp, kva) => M().sm.some(s => s[0] === tp && s[1] === kva);
 const mfyOf = tp => { const t = M().tps.find(x => x[0] === tp); return t ? t[2] : ''; };
 const mfyTxt = m => !m ? '' : (/МФЙ$/i.test(m) ? m : m + ' МФЙ');
+const isHl = d => !!d && d.kind === 'hl';
+const hasObj = d => !!d && (isHl(d) ? !!d.feeder : !!d.tp);
+const hlOf = id => (M().hl || []).find(h => h[0] === String(id));
+const itemOf = id => isHl(S.draft) ? hlOf(id) : matOf(id);
+const uTxt = u => String(u || '').replace(/\n/g, ' ');
+const plan = () => M().plan || [];
+const planYear = () => (plan()[0] || [])[9] || '';
+const inPlanTp = (tp, kva) => plan().some(p => p[0] === 'ТП' && p[1] === tp && p[2] === kva);
+const objTitle = d => isHl(d) ? d.kv + ' кВ ' + d.feeder : 'ТП-' + d.tp + '/' + d.kva + ' кВА';
+const objSub = d => isHl(d) ? [d.km !== '' && d.km != null ? fmtQ(d.km) + ' км' : '', mfyTxt(d.mfy)].filter(Boolean).join(' · ') : mfyTxt(d.mfy);
+const myB = () => M().me.admin ? (S.draft && S.draft.bolim || '') : M().me.bolim;
+const planFor = kind => plan().filter(p => p[0] === kind && (S.allB || !myB() || p[6] === myB()));
+function gpCount(d) { let n = 0; for (const k in d.gp) n += d.gp[k].length; return n; }
 function photoCount(d) { let n = 0; for (const k in d.items) n += (d.items[k].ph || []).length; for (const k in d.gp) n += d.gp[k].length; return n; }
 function gpDone(d) { return M().photos.filter((_, i) => d.gp[i] && d.gp[i].length).length; }
 function warnings(d) {
+  if (isHl(d)) return [];
   const w = [], sel = Object.keys(d.items).map(matOf).filter(Boolean);
   for (const m of sel) {
     if (m[7] || m[8]) continue;
@@ -325,7 +339,7 @@ function warnings(d) {
   return w;
 }
 function newDraft() {
-  return { did: uid(), bolim: M().me.admin ? '' : M().me.bolim, tp: '', kva: '', mfy: '', items: {}, gp: {}, t: Date.now() };
+  return { did: uid(), kind: S.lastKind || 'tp', bolim: M().me.admin ? '' : M().me.bolim, tp: '', kva: '', mfy: '', feeder: '', kv: '', km: '', items: {}, gp: {}, t: Date.now() };
 }
 async function dropDraft() {
   if (!S.draft) return;
@@ -391,23 +405,27 @@ function vHome(a) {
   $('#title').textContent = 'Нуқсон — Учкўприк ТЭТК';
   let h = '<div class="card row-flex"><div style="font-size:34px">👷</div><div class="grow"><div style="font-weight:700;font-size:18px">' + esc(me.admin ? 'Админ' : me.name) + '</div>' +
     '<div class="mu sm">' + esc(me.admin ? 'барча бўлимлар' : me.bolim + ' бўлим устаси') + '</div></div></div>';
-  if (d && d.tp) {
+  if (hasObj(d)) {
     const n = Object.keys(d.items).length;
     h += '<div class="card" style="border-color:#b9d3ee"><div class="row-flex"><div class="grow"><div class="xs mu">ҚОРАЛАМА</div>' +
-      '<div style="font-weight:700;font-size:18px">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
+      '<div style="font-weight:700;font-size:18px">' + (isHl(d) ? '⚡ ' : '🏭 ') + esc(objTitle(d)) + '</div>' +
       '<div class="mu sm">' + n + ' та нуқсон · ' + photoCount(d) + ' та расм</div></div></div>' +
       '<div class="btns two" style="margin-top:12px"><button class="btn bad" id="del">Ўчириш</button><button class="btn pri" id="cont">Давом эттириш</button></div></div>';
   }
   h += '<div class="btns" style="margin-top:6px"><button class="btn pri lg" id="new">➕ Янги нуқсон далолатномаси</button>' +
     '<button class="btn lg" id="docs">📄 Ҳужжатларим</button></div>';
   if (S.installEvt) h += '<div class="card" style="margin-top:14px"><div class="row-flex"><div class="grow"><b>Иловани ўрнатинг</b><div class="mu sm">Телефон экранида белги пайдо бўлади</div></div><button class="btn pri" style="width:auto" id="inst">Ўрнатиш</button></div></div>';
-  else if (/iphone|ipad/i.test(navigator.userAgent) && !navigator.standalone) h += '<div class="info" style="margin-top:14px">iPhone: Safari\'да <b>⎋ Поделиться</b> → <b>«На экран Домой»</b> ни босинг — илова экранда туради.</div>';
-  h += '<p class="center mu xs" style="margin-top:26px">Смета: ' + esc(M().year || '—') + ' · ТПлар: ' + M().tps.length + ' · v' + APP_VER +
+  else if (!isStandalone()) h += /iphone|ipad/i.test(navigator.userAgent)
+    ? '<div class="info" style="margin-top:14px">📲 <b>Иловани экранга қўйиш:</b> Safari\'да <b>⎋ Поделиться</b> → <b>«На экран Домой»</b> ни босинг.</div>'
+    : '<div class="info" style="margin-top:14px">📲 <b>Иловани экранга қўйиш:</b><br>1. Агар бу саҳифа Telegram ичида очилган бўлса — юқоридаги <b>⋮</b> → <b>«Открыть в Chrome»</b>.<br>2. Chrome\'да <b>⋮</b> → <b>«Добавить на главный экран»</b> ёки <b>«Установить приложение»</b>.</div>';
+  const pl = plan();
+  h += '<p class="center mu xs" style="margin-top:26px">' + (pl.length ? 'Режа ' + esc(planYear()) + ': ' + pl.filter(p => p[0] === 'ТП').length + ' ТП, ' + pl.filter(p => p[0] === 'ХЛ').length + ' тармоқ · ' : 'Смета: ' + esc(M().year || '—') + ' · ') +
+    'ТПлар: ' + M().tps.length + ' · v' + APP_VER +
     '<br><button class="btn ghost" style="width:auto;display:inline-flex;min-height:36px;font-size:13px" id="out">Чиқиш</button></p>';
   a.innerHTML = h;
   $('#new').onclick = async () => {
     if (d && Object.keys(d.items).length && !confirm('Қоралама ўчирилиб, янгиси бошлансинми?')) return;
-    await dropDraft(); S.draft = newDraft(); saveDraft(); S.tpq = ''; S.manual = false; S.tpFromAct = false; go('tp');
+    await dropDraft(); S.draft = newDraft(); saveDraft(); S.tpq = ''; S.manual = false; S.tpFromAct = false; S.allB = false; go('tp');
   };
   $('#docs').onclick = () => { S.docs = null; go('docs'); loadDocs(); };
   if ($('#cont')) $('#cont').onclick = () => go('act');
@@ -419,27 +437,86 @@ function vHome(a) {
 /* ---- ТП танлаш ---- */
 function vTp(a) {
   const d = S.draft, me = M().me;
-  $('#title').textContent = 'ТП танлаш';
-  let h = '';
+  $('#title').textContent = 'Объект танлаш';
+  let h = '<div class="seg" id="kseg" style="margin-bottom:6px"><button data-k="tp" class="' + (isHl(d) ? '' : 'on') + '">🏭 ТП</button><button data-k="hl" class="' + (isHl(d) ? 'on' : '') + '">⚡ 6-10 кВ тармоқ</button></div>';
   if (me.admin) {
     h += '<div class="sec-t">Бўлим</div><div class="chips" style="margin-bottom:6px">' +
       M().us.map(u => '<button class="chip' + (d.bolim === u[0] ? ' on' : '') + '" data-b="' + esc(u[0]) + '">' + esc(u[0]) + ' · ' + esc(u[1]) + '</button>').join('') + '</div>';
   }
-  h += '<div class="sec-t">ТП рақами</div><div class="search"><input id="tpq" class="inp" inputmode="numeric" autocomplete="off" placeholder="Масалан: 165" value="' + esc(S.tpq) + '"></div>' +
-    '<div id="tpres" style="margin-top:12px"></div>';
+  h += isHl(d)
+    ? '<div class="sec-t">Узатма номи</div><div class="search"><input id="tpq" class="inp" autocomplete="off" placeholder="Масалан: Мирзахўжа" value="' + esc(S.tpq) + '"></div><div id="tpres" style="margin-top:12px"></div>'
+    : '<div class="sec-t">ТП рақами</div><div class="search"><input id="tpq" class="inp" inputmode="numeric" autocomplete="off" placeholder="Масалан: 165" value="' + esc(S.tpq) + '"></div><div id="tpres" style="margin-top:12px"></div>';
   a.innerHTML = h;
-  a.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { d.bolim = b.dataset.b; saveDraft(); a.querySelectorAll('[data-b]').forEach(x => x.classList.toggle('on', x === b)); });
+  a.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { d.bolim = b.dataset.b; saveDraft(); a.querySelectorAll('[data-b]').forEach(x => x.classList.toggle('on', x === b)); objResults(); });
+  a.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+    const k = b.dataset.k; if (k === (d.kind || 'tp')) return;
+    if (Object.keys(d.items).length && !confirm('Белгиланган нуқсонлар ўчирилиб, объект тури алмаштирилсинми?')) return;
+    d.kind = k; S.lastKind = k; d.items = {}; d.gp = {}; d.tp = d.kva = d.feeder = d.kv = d.km = d.mfy = ''; saveDraft(); S.tpq = ''; S.manual = false; render();
+  });
   const inp = $('#tpq');
-  inp.oninput = () => { S.tpq = inp.value.trim(); tpResults(); };
-  tpResults();
-  if (!S.tpq && !me.admin) setTimeout(() => inp.focus(), 50);
+  inp.oninput = () => { S.tpq = inp.value.trim(); objResults(); };
+  objResults();
+}
+function objResults() { return isHl(S.draft) ? hlResults() : tpResults(); }
+function bToggle() {
+  const b = myB(); if (!b) return '';
+  return '<button class="btn ghost" id="allb" style="min-height:40px;margin-top:4px">' + (S.allB ? 'Фақат ' + esc(b) + ' бўлим' : 'Барча бўлимларни кўрсатиш') + '</button>';
+}
+function planRowTp(p) {
+  return '<button class="it" data-tp="' + esc(p[1]) + '" data-kva="' + esc(p[2]) + '" data-mfy="' + esc(p[5]) + '" data-b="' + esc(p[6]) + '"><div class="grow"><div class="t" style="font-size:18px">ТП-' + esc(p[1]) +
+    ' <span class="mu" style="font-weight:500">/ ' + esc(p[2]) + ' кВА</span></div><div class="mu sm">' + esc(p[5]) + ' · ' + esc(p[3]) + '</div>' +
+    '<div class="xs mu">📅 ' + esc(p[8]) + (S.allB || M().me.admin ? ' · ' + esc(p[6]) + ' бўлим' : '') + '</div></div><span class="badge ok">Режа ' + esc(p[9]) + '</span></button>';
+}
+function hlResults() {
+  const q = S.tpq.toLowerCase(), box = $('#tpres'); let h = '';
+  const pl = planFor('ХЛ').filter(p => !q || p[3].toLowerCase().includes(q));
+  if (pl.length) h += '<div class="sec-t" style="margin-top:4px">Режа ' + esc(planYear()) + ' — тармоқлар (' + pl.length + ')</div><div class="list">' + pl.map(p =>
+    '<button class="it" data-f="' + esc(p[3]) + '" data-kv="' + esc(p[4]) + '" data-km="' + esc(p[7]) + '" data-mfy="' + esc(p[5]) + '" data-b="' + esc(p[6]) + '"><div class="grow"><div class="t" style="font-size:18px">⚡ ' + esc(p[4]) + ' кВ ' + esc(p[3]) + '</div>' +
+    '<div class="mu sm">' + (p[7] !== '' ? fmtQ(p[7]) + ' км · ' : '') + esc(p[5]) + '</div><div class="xs mu">📅 ' + esc(p[8]) + (S.allB || M().me.admin ? ' · ' + esc(p[6]) + ' бўлим' : '') + '</div></div>' +
+    '<span class="badge ok">Режа ' + esc(p[9]) + '</span></button>').join('') + '</div>';
+  else h += '<p class="mu">' + (q ? 'Режада «' + esc(S.tpq) + '» топилмади.' : 'Режада бу бўлим учун тармоқ йўқ.') + '</p>';
+  h += bToggle();
+  h += S.manual ? hlManual() : '<button class="btn ghost" id="man" style="margin-top:6px">Режада йўқ тармоқ — қўлда киритиш</button>';
+  box.innerHTML = h;
+  box.querySelectorAll('[data-f]').forEach(b => b.onclick = () => pickHl(b.dataset.f, b.dataset.kv, b.dataset.km, b.dataset.mfy, b.dataset.b));
+  if ($('#allb')) $('#allb').onclick = () => { S.allB = !S.allB; objResults(); };
+  if ($('#man')) $('#man').onclick = () => { S.manual = true; objResults(); };
+  if (S.manual) {
+    const fl = () => { const t = $('#hf').value.trim().toLowerCase(); $('#hfl').innerHTML = (M().feeders || []).filter(f => !t || f.toLowerCase().includes(t)).slice(0, 14)
+      .map(f => '<button class="chip sm" data-hf="' + esc(f) + '">' + esc(f) + '</button>').join(''); $('#hfl').querySelectorAll('[data-hf]').forEach(b => b.onclick = () => { $('#hf').value = b.dataset.hf; fl(); }); };
+    $('#hf').oninput = fl; fl();
+    let kv = '';
+    box.querySelectorAll('[data-hkv]').forEach(b => b.onclick = () => { kv = b.dataset.hkv; box.querySelectorAll('[data-hkv]').forEach(x => x.classList.toggle('on', x === b)); });
+    $('#hok').onclick = () => {
+      const f = $('#hf').value.trim(), km = num($('#hkm').value);
+      if (!f) return toast('Узатма номини ёзинг'); if (!kv) return toast('Кучланишни танланг (6 ёки 10 кВ)');
+      pickHl(f, kv, km == null ? '' : km, $('#hmfy').value.trim());
+    };
+  }
+}
+function hlManual() {
+  return '<div class="card" style="margin-top:10px"><h2>Қўлда киритиш</h2><label class="fld"><span>Узатма номи</span><input id="hf" class="inp" value="' + esc(S.tpq) + '" autocomplete="off"></label>' +
+    '<div class="chips" id="hfl" style="margin:-4px 0 12px"></div>' +
+    '<div class="fld"><span>Кучланиш</span><div class="seg"><button data-hkv="10">10 кВ</button><button data-hkv="6">6 кВ</button></div></div>' +
+    '<label class="fld"><span>Узунлиги, км (ихтиёрий)</span><input id="hkm" class="inp" inputmode="decimal"></label>' +
+    '<label class="fld"><span>МФЙ (ихтиёрий)</span><input id="hmfy" class="inp"></label><button class="btn pri" id="hok">Давом этиш</button></div>';
+}
+function pickHl(feeder, kv, km, mfy, bol) {
+  const d = S.draft;
+  if (M().me.admin && !d.bolim) { if (bol) d.bolim = bol; else { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); } }
+  d.kind = 'hl'; S.lastKind = 'hl'; d.feeder = feeder; d.kv = String(kv); d.km = km === '' || km == null ? '' : +km; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
+  if (S.tpFromAct) { S.tpFromAct = false; history.back(); } else go('act', 'replace');
 }
 function tpResults() {
   const q = S.tpq.toLowerCase(), box = $('#tpres'); let h = '';
   const row = (tp, kva, mfy, sm) => '<button class="it" data-tp="' + esc(tp) + '" data-kva="' + esc(kva) + '"><div class="grow"><div class="t" style="font-size:18px">ТП-' + esc(tp) +
     ' <span class="mu" style="font-weight:500">/ ' + esc(kva) + ' кВА</span></div><div class="mu sm">' + esc(mfy || '—') + '</div></div>' +
-    (sm ? '<span class="badge ok">Смета ' + esc(M().year) + '</span>' : '<span class="badge gr">сметада йўқ</span>') + '</button>';
-  if (!q) {
+    (inPlanTp(tp, kva) ? '<span class="badge ok">Режа ' + esc(planYear()) + '</span>' : sm ? '<span class="badge ok">Смета ' + esc(M().year) + '</span>' : '<span class="badge gr">режада йўқ</span>') + '</button>';
+  if (!q && plan().some(p => p[0] === 'ТП')) {
+    const pl = planFor('ТП');
+    h = '<div class="sec-t" style="margin-top:4px">Режа ' + esc(planYear()) + ' — ТПлар (' + pl.length + ')</div>' +
+      (pl.length ? '<div class="list">' + pl.map(planRowTp).join('') + '</div>' : '<p class="mu">Режада бу бўлим учун ТП йўқ.</p>') + bToggle();
+  } else if (!q) {
     const sm = [...M().sm].sort((x, y) => (+x[0] - +y[0]) || (+x[1] - +y[1]));
     h = sm.length ? '<div class="sec-t" style="margin-top:4px">Сметадаги ТПлар (' + sm.length + ')</div><div class="chips">' +
       sm.map(s => '<button class="chip" data-tp="' + esc(s[0]) + '" data-kva="' + esc(s[1]) + '">ТП-' + esc(s[0]) + '/' + esc(s[1]) + '</button>').join('') + '</div>'
@@ -453,7 +530,8 @@ function tpResults() {
   }
   h += S.manual ? manualForm() : '<button class="btn ghost" id="man" style="margin-top:6px">Рўйхатда йўқ ТП — қўлда киритиш</button>';
   box.innerHTML = h;
-  box.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => pickTp(b.dataset.tp, b.dataset.kva, mfyOf(b.dataset.tp)));
+  box.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => pickTp(b.dataset.tp, b.dataset.kva, b.dataset.mfy || mfyOf(b.dataset.tp), b.dataset.b));
+  if ($('#allb')) $('#allb').onclick = () => { S.allB = !S.allB; objResults(); };
   if ($('#man')) $('#man').onclick = () => { S.manual = true; tpResults(); };
   if (S.manual) {
     let kv = '';
@@ -471,27 +549,28 @@ function manualForm() {
     '</div><input id="mkva" class="inp" inputmode="numeric" placeholder="ёки ёзинг" style="margin-top:8px"></div>' +
     '<label class="fld"><span>МФЙ</span><input id="mmfy" class="inp" placeholder="ихтиёрий"></label><button class="btn pri" id="mok">Давом этиш</button></div>';
 }
-function pickTp(tp, kva, mfy) {
+function pickTp(tp, kva, mfy, bol) {
   const d = S.draft;
-  if (M().me.admin && !d.bolim) { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); }
-  d.tp = tp; d.kva = kva; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
+  if (M().me.admin && !d.bolim) { if (bol) d.bolim = bol; else { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); } }
+  d.kind = 'tp'; S.lastKind = 'tp'; d.tp = tp; d.kva = kva; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
   if (S.tpFromAct) { S.tpFromAct = false; history.back(); } else go('act', 'replace');
 }
 
 /* ---- нуқсонлар ---- */
 function vAct(a, bb) {
-  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
+  const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
   $('#title').textContent = 'Нуқсонлар';
-  const n = Object.keys(d.items).length, sm = smHas(d.tp, d.kva);
-  let h = '<div class="card tp-card"><div class="row-flex"><div class="grow"><div class="big">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
-    '<div class="mu sm">' + esc(mfyTxt(d.mfy) || '—') + (M().me.admin ? ' · ' + esc(d.bolim) : '') + '</div></div><button class="lnk" id="chg" aria-label="ТП ни ўзгартириш" title="ТП ни ўзгартириш">✎</button></div>' +
-    '<div class="stats"><div class="stat"><b>' + n + '</b>нуқсон</div><div class="stat"><b>' + photoCount(d) + '</b>расм</div><div class="stat"><b>' + (sm ? '✓' : '—') + '</b>смета</div></div></div>';
+  const n = Object.keys(d.items).length, hl = isHl(d);
+  const inPl = hl ? plan().some(p => p[0] === 'ХЛ' && p[3] === d.feeder && p[4] === d.kv) : inPlanTp(d.tp, d.kva);
+  let h = '<div class="card tp-card"><div class="row-flex"><div class="grow"><div class="big">' + (hl ? '⚡ ' : '') + esc(objTitle(d)) + '</div>' +
+    '<div class="mu sm">' + esc(objSub(d) || '—') + (M().me.admin ? ' · ' + esc(d.bolim) : '') + '</div></div><button class="lnk" id="chg" aria-label="Объектни ўзгартириш" title="Объектни ўзгартириш">✎</button></div>' +
+    '<div class="stats"><div class="stat"><b>' + n + '</b>нуқсон</div><div class="stat"><b>' + photoCount(d) + '</b>расм</div><div class="stat"><b>' + (inPl ? '✓' : '—') + '</b>режа</div></div></div>';
   h += '<div class="search" style="margin-bottom:12px"><input id="q" class="inp" placeholder="Нуқсон қидириш (масалан: изолятор)" value="' + esc(S.q) + '" autocomplete="off"></div><div id="mlist"></div>';
   a.innerHTML = h;
-  $('#chg').onclick = () => { S.tpq = d.tp; S.tpFromAct = true; go('tp'); };
+  $('#chg').onclick = () => { S.tpq = hl ? '' : d.tp; S.tpFromAct = true; go('tp'); };
   const q = $('#q'); q.oninput = () => { S.q = q.value; matList(); };
   matList();
-  bb.innerHTML = '<div class="bbar"><div class="in"><button class="btn" id="gpb" style="width:auto">📷 ' + gpDone(d) + '/' + M().photos.length + '</button>' +
+  bb.innerHTML = '<div class="bbar"><div class="in"><button class="btn" id="gpb" style="width:auto">📷 ' + (hl ? gpCount(d) : gpDone(d) + '/' + M().photos.length) + '</button>' +
     '<button class="btn pri" id="rev"' + (n ? '' : ' disabled') + '>Кўриш ва юбориш →</button></div></div>';
   $('#gpb').onclick = () => go('photos');
   $('#rev').onclick = () => go('review');
@@ -499,18 +578,19 @@ function vAct(a, bb) {
 function matRow(m) {
   const it = S.draft.items[m[0]];
   return '<button class="it' + (it ? ' sel' : '') + '" data-m="' + m[0] + '"><div class="grow"><div class="t">' + esc(m[1]) + '</div>' +
-    (it ? '<div class="mu xs">' + esc(it.rsn || '') + (it.note ? ' · ' + esc(it.note) : '') + ((it.ph || []).length ? ' · 📷' + it.ph.length : '') + '</div>' : '') + '</div>' +
-    (it ? '<span class="pill">' + fmtQ(it.q) + ' ' + esc(it.u) + '</span>' : '<span class="chev">＋</span>') + '</button>';
+    (it ? '<div class="mu xs">' + esc(it.rsn || '') + (it.note ? ' · ' + esc(it.note.length > 70 ? it.note.slice(0, 70) + '…' : it.note) : '') + ((it.ph || []).length ? ' · 📷' + it.ph.length : '') + '</div>' : '') + '</div>' +
+    (it ? '<span class="pill">' + fmtQ(it.q) + ' ' + esc(uTxt(it.u)) + '</span>' : '<span class="chev">＋</span>') + '</button>';
 }
+const LIST = () => isHl(S.draft) ? { items: M().hl || [], groups: M().hlGroups || [] } : { items: M().mats, groups: M().groups };
 function matList() {
-  const box = $('#mlist'), q = S.q.trim().toLowerCase(), D = M();
+  const box = $('#mlist'), q = S.q.trim().toLowerCase(), D = LIST();
   let h = '';
   if (q) {
-    const r = D.mats.filter(m => m[1].toLowerCase().includes(q));
+    const r = D.items.filter(m => m[1].toLowerCase().includes(q));
     h = r.length ? '<div class="list">' + r.map(matRow).join('') + '</div>' : '<p class="mu center">Топилмади</p>';
   } else {
     h = D.groups.map((g, gi) => {
-      const ms = D.mats.filter(m => m[2] === gi); if (!ms.length) return '';
+      const ms = D.items.filter(m => m[2] === gi); if (!ms.length) return '';
       const cnt = ms.filter(m => S.draft.items[m[0]]).length, open = S.openG === gi;
       return '<div class="grp"><button class="gh" data-g="' + gi + '"><span class="grow">' + esc(g) + '</span>' + (cnt ? '<span class="cnt">' + cnt + '</span>' : '') +
         '<span class="chev">' + (open ? '▴' : '▾') + '</span></button>' + (open ? ms.map(matRow).join('') : '') + '</div>';
@@ -518,7 +598,7 @@ function matList() {
   }
   box.innerHTML = h;
   box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = +b.dataset.g; S.openG = S.openG === g ? -1 : g; matList(); if (S.openG === g) b.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
-  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => itemSheet(b.dataset.m));
+  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (isHl(S.draft) ? hlSheet : itemSheet)(b.dataset.m));
 }
 
 /* ---- битта нуқсон (пастдан очиладиган ойна) ---- */
@@ -588,16 +668,78 @@ function itemSheet(mid) {
   };
 }
 
+function hlSheet(id) {
+  const m = hlOf(id), d = S.draft, ex = d.items[id];
+  const it = ex ? JSON.parse(JSON.stringify(ex)) : { q: '', u: m[3], rsn: m[4] || '', note: '', ret: '', ph: (S._pendingPh || {})[id] || [] };
+  const reasons = [...new Set([m[4], ...M().reasons, 'мавжуд эмас', 'қийшайган'].filter(Boolean))];
+  const persist = () => { if (d.items[id]) { d.items[id].ph = it.ph; saveDraft(); } else { S._pendingPh = S._pendingPh || {}; S._pendingPh[id] = it.ph; } };
+  const drawPh = () => {
+    $('#iph').innerHTML = it.ph.map(p => '<button class="th" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
+      '<button class="add-ph" id="cam1"><b>📷</b>Расм олиш</button><button class="add-ph" id="gal1"><b>🖼</b>Галерея</button>';
+    $('#cam1').onclick = () => pickPhoto({ name: m[1], add: p => it.ph.push(p), done: () => { persist(); drawPh(); } });
+    $('#gal1').onclick = () => pickPhoto({ name: m[1], add: p => it.ph.push(p), done: () => { persist(); drawPh(); } }, true);
+    $('#iph').querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      if (!confirm('Расм ўчирилсинми?')) return;
+      it.ph = it.ph.filter(x => x !== b.dataset.p); await PH.del(b.dataset.p); persist(); drawPh();
+    });
+    thumbs();
+  };
+  const dec = /км/.test(m[3]);
+  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc((M().hlGroups || [])[m[2]] || '') + ' · ' + esc(objTitle(d)) + '</div>' +
+    '<div class="fld"><span>Миқдори (' + esc(uTxt(m[3])) + ')</span><div class="qty"><button id="mn">−</button><input id="qv" class="inp big" inputmode="decimal" value="' + esc(it.q === '' ? '' : fmtQ(it.q)) + '" placeholder="0"><button id="pl">+</button></div>' +
+    '<div id="qerr" class="err hidden"></div>' + (dec ? '<div class="mu xs" style="margin-top:6px">Километрда: масалан 0,45</div>' : '') + '</div>' +
+    '<label class="fld"><span>Таянч рақамлари / оралиқлар</span><textarea id="nv" class="inp" rows="3" style="min-height:84px;resize:vertical" placeholder="' + esc(m[5] ? 'Масалан: ' + m[5] : 'Масалан: таянч № 10, таянч № 14') + '">' + esc(it.note) + '</textarea></label>' +
+    '<div class="fld"><span>Сабаби</span><div class="chips" id="rch">' + reasons.map(r => '<button class="chip sm' + (r === it.rsn ? ' on' : '') + '" data-r="' + esc(r) + '">' + esc(r) + '</button>').join('') + '</div>' +
+    '<input id="rv" class="inp" style="margin-top:8px" placeholder="ёки ўзингиз ёзинг" value="' + esc(reasons.includes(it.rsn) ? '' : it.rsn) + '"></div>' +
+    '<label class="fld"><span>Қайтган қисмлар — ихтиёрий</span><input id="retv" class="inp" value="' + esc(it.ret || '') + '" placeholder="масалан: 2 дона ёғоч таянч"></label>' +
+    '<div class="fld"><span>Расмлар (чекланмаган)</span><div class="thumbs" id="iph"></div></div>' +
+    '<div class="btns' + (ex ? ' two' : '') + '" style="margin-top:6px">' + (ex ? '<button class="btn bad" id="rm">Олиб ташлаш</button>' : '') + '<button class="btn pri lg" id="ok">Сақлаш</button></div>');
+  drawPh();
+  const qv = $('#qv'), step = dec ? 0.05 : 1;
+  $('#mn').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.max(0, Math.round((v - step) * 1000) / 1000)); };
+  $('#pl').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.round((v + step) * 1000) / 1000); };
+  $('#rch').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { it.rsn = b.dataset.r; $('#rv').value = ''; $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#rv').oninput = e => { if (e.target.value.trim()) $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.remove('on')); };
+  if (!ex) setTimeout(() => qv.focus(), 250);
+  $('#ok').onclick = () => {
+    const q = num(qv.value), err = $('#qerr');
+    if (q == null || q <= 0) { err.textContent = 'Миқдорни ёзинг'; err.classList.remove('hidden'); qv.focus(); return; }
+    const rv = $('#rv').value.trim(); if (rv) it.rsn = rv;
+    d.items[id] = { q: Math.round(q * 1000) / 1000, u: m[3], rsn: it.rsn, note: $('#nv').value.trim(), ret: $('#retv').value.trim(), ph: it.ph };
+    if (S._pendingPh) delete S._pendingPh[id];
+    saveDraft(); closeSheet(); toast('✓ ' + m[1] + ' — ' + fmtQ(q) + ' ' + uTxt(m[3]));
+  };
+  if (ex) $('#rm').onclick = async () => {
+    if (!confirm('«' + m[1] + '» олиб ташлансинми?')) return;
+    for (const p of it.ph) await PH.del(p);
+    delete d.items[id]; saveDraft(); closeSheet();
+  };
+}
+
 /* ---- умумий расмлар ---- */
 function vPhotos(a) {
-  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
-  $('#title').textContent = 'Умумий расмлар';
-  a.innerHTML = '<div class="info">Изоҳ талаби: ҳар бир мукаммал таъмирланадиган ТП нинг расми олинади. Ҳар бир турга камида битта расм.</div><div class="list" id="gpl">' +
+  const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
+  $('#title').textContent = isHl(d) ? 'Тармоқ расмлари' : 'Умумий расмлар';
+  if (isHl(d)) {
+    const arr = d.gp['0'] || [];
+    a.innerHTML = '<div class="info">⚡ ' + esc(objTitle(d)) + ' — тармоқ бўйлаб истаганча расм олинг: таянчлар, симлар, изоляторлар, РЛНД ва ҳ.к.</div>' +
+      '<div class="card"><div style="font-weight:600;margin-bottom:10px">Расмлар: ' + arr.length + ' та</div><div class="thumbs">' +
+      arr.map(p => '<button class="th" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
+      '<button class="add-ph" id="hc"><b>📷</b>Расм олиш</button><button class="add-ph" id="hg"><b>🖼</b>Галерея</button></div></div>';
+    const add = gal => pickPhoto({ name: 'Тармоқ_' + d.kv + 'кВ_' + d.feeder, add: p => { (d.gp['0'] = d.gp['0'] || []).push(p); }, done: () => render() }, gal);
+    $('#hc').onclick = () => add(false); $('#hg').onclick = () => add(true);
+    a.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      if (!confirm('Расм ўчирилсинми?')) return;
+      d.gp['0'] = d.gp['0'].filter(x => x !== b.dataset.p); await PH.del(b.dataset.p); saveDraft(); render();
+    });
+    return;
+  }
+  a.innerHTML = '<div class="info">Ҳар бир мукаммал таъмирланадиган ТП нинг расми олинади. Ҳар бир турга камида битта расм (кўпроқ ҳам бўлади).</div><div class="list" id="gpl">' +
     M().photos.map((t, i) => {
       const arr = d.gp[i] || [];
       return '<div class="gp-row"><div class="row-flex" style="margin-bottom:8px"><div class="grow" style="font-weight:600">' + (arr.length ? '✅ ' : '⬜ ') + esc(t) + '</div></div><div class="thumbs">' +
         arr.map(p => '<button class="th" data-i="' + i + '" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
-        '<button class="add-ph" data-c="' + i + '"><b>📷</b>Расм</button>' + (arr.length ? '' : '<button class="add-ph" data-gl="' + i + '"><b>🖼</b>Галерея</button>') + '</div></div>';
+        '<button class="add-ph" data-c="' + i + '"><b>📷</b>Расм</button><button class="add-ph" data-gl="' + i + '"><b>🖼</b>Галерея</button></div></div>';
     }).join('') + '</div>';
   const add = (i, gal) => pickPhoto({ name: 'Умумий_' + M().photos[i], add: p => { (d.gp[i] = d.gp[i] || []).push(p); }, done: () => render() }, gal);
   a.querySelectorAll('[data-c]').forEach(b => b.onclick = () => add(+b.dataset.c));
@@ -610,21 +752,22 @@ function vPhotos(a) {
 
 /* ---- кўриш ва юбориш ---- */
 async function vReview(a, bb) {
-  const d = S.draft; if (!d || !d.tp) return go('home', 'replace');
+  const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
   $('#title').textContent = 'Кўриш ва юбориш';
-  const D = M(), w = warnings(d), miss = D.photos.length - gpDone(d);
-  let h = '<div class="card"><div class="xs mu">ТП</div><div style="font-size:20px;font-weight:800">ТП-' + esc(d.tp) + '/' + esc(d.kva) + ' кВА</div>' +
-    '<div class="mu sm">' + esc(mfyTxt(d.mfy) || '—') + ' · ' + esc(d.bolim) + ' бўлим' + (smHas(d.tp, d.kva) ? ' · <span class="badge ok">смета</span>' : ' · <span class="badge gr">сметада йўқ</span>') + '</div></div>';
+  const hl = isHl(d), D = LIST(), w = warnings(d), miss = hl ? 0 : M().photos.length - gpDone(d);
+  let h = '<div class="card"><div class="xs mu">' + (hl ? '6-10 кВ ТАРМОҚ' : 'ТП') + '</div><div style="font-size:20px;font-weight:800">' + (hl ? '⚡ ' : '') + esc(objTitle(d)) + '</div>' +
+    '<div class="mu sm">' + esc(objSub(d) || '—') + ' · ' + esc(d.bolim) + ' бўлим</div></div>';
   w.forEach(x => h += '<div class="warn">⚠️ ' + esc(x) + '</div>');
   if (miss) h += '<div class="warn">📷 Умумий расмлар тўлиқ эмас: ' + miss + ' та тур расмсиз. <a href="#" id="gpl">Қўшиш</a></div>';
-  h += '<div class="sec-t">Нуқсонлар (' + Object.keys(d.items).length + ')</div>';
+  if (hl && !gpCount(d)) h += '<div class="warn">📷 Тармоқ расмлари йўқ. <a href="#" id="gpl">Қўшиш</a></div>';
+  h += '<div class="sec-t">Нуқсонлар (' + Object.keys(d.items).length + ') · Расмлар: ' + photoCount(d) + '</div>';
   D.groups.forEach((g, gi) => {
-    const ms = D.mats.filter(m => m[2] === gi && d.items[m[0]]); if (!ms.length) return;
+    const ms = D.items.filter(m => m[2] === gi && d.items[m[0]]); if (!ms.length) return;
     h += '<div class="xs mu" style="margin:10px 4px 6px;font-weight:600">' + esc(g) + '</div><div class="list">' + ms.map(matRow).join('') + '</div>';
   });
   h += '<div id="pend" class="mu sm center" style="margin-top:8px"></div>';
   a.innerHTML = h;
-  a.querySelectorAll('[data-m]').forEach(b => b.onclick = () => itemSheet(b.dataset.m));
+  a.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (hl ? hlSheet : itemSheet)(b.dataset.m));
   if ($('#gpl')) $('#gpl').onclick = e => { e.preventDefault(); go('photos'); };
   bb.innerHTML = '<div class="bbar"><div class="in" style="grid-template-columns:1fr"><button class="btn ok lg" id="snd">✅ Далолатномани юбориш</button></div></div>';
   $('#snd').onclick = () => {
@@ -652,8 +795,9 @@ async function submit() {
   }
   // 2) далолатнома
   const map = {}; (await PH.byDid(d.did)).forEach(p => map[p.pid] = p.id);
-  const act = { bolim: d.bolim, tp: d.tp, kva: d.kva, mfy: d.mfy, items: {}, gp: {} };
-  for (const [mid, it] of Object.entries(d.items)) act.items[mid] = { q: it.q, u: it.u, rsn: it.rsn, note: it.note, ph: (it.ph || []).map(p => map[p]).filter(Boolean) };
+  const act = isHl(d) ? { kind: 'hl', bolim: d.bolim, feeder: d.feeder, kv: d.kv, km: d.km, mfy: d.mfy, items: {}, gp: {} }
+    : { kind: 'tp', bolim: d.bolim, tp: d.tp, kva: d.kva, mfy: d.mfy, items: {}, gp: {} };
+  for (const [mid, it] of Object.entries(d.items)) act.items[mid] = { q: it.q, u: it.u, rsn: it.rsn, note: it.note, ret: it.ret || '', ph: (it.ph || []).map(p => map[p]).filter(Boolean) };
   for (const [i, arr] of Object.entries(d.gp)) act.gp[i] = arr.map(p => map[p]).filter(Boolean);
   S.send = { stage: 'mk', t0: Date.now() }; drawSend();
   const tick = setInterval(() => S.view === 'send' && S.send && S.send.stage === 'mk' && drawSend(), 1000);
@@ -714,14 +858,15 @@ function vDocs(a) {
   if (!D) { a.innerHTML = '<div class="spin"></div>'; return; }
   if (D.err) { a.innerHTML = '<div class="card center"><p>' + esc(D.err) + '</p><button class="btn pri" id="rl">Қайта уриниш</button></div>'; $('#rl').onclick = () => { S.docs = null; render(); loadDocs(); }; return; }
   if (!D.length) { a.innerHTML = '<p class="center mu" style="margin-top:40px">Ҳали ҳужжат йўқ.</p>'; return; }
-  const cls = s => /шакллантирилди/.test(s) ? 'gr' : /бажарилди/.test(s) ? 'ok' : /хато/.test(s) ? 'b' : 'w';
+  const cls = s => /бажарилди/.test(s) ? 'ok' : /шакллантирилди/.test(s) ? 'gr' : /хато/.test(s) ? 'b' : 'w';
   a.innerHTML = '<div class="list">' + D.map(r => '<div class="it" style="cursor:default"><div class="grow"><div class="t">' + esc(r[0]) + '</div>' +
-    '<div class="mu sm">ТП-' + esc(r[2]) + '/' + esc(r[3]) + ' · ' + esc(r[1]) + (M().me.admin ? ' · ' + esc(r[8]) : '') + '</div>' +
+    '<div class="mu sm">' + (r[3] ? 'ТП-' + esc(r[2]) + '/' + esc(r[3]) : '⚡ ' + esc(r[2])) + ' · ' + esc(r[1]) + (M().me.admin ? ' · ' + esc(r[8]) : '') + '</div>' +
     '<span class="badge ' + cls(r[5]) + '">' + esc(r[5]) + '</span></div>' +
     (r[6] ? '<a class="btn" style="width:auto;min-height:40px" href="' + esc(r[6]) + '" target="_blank" rel="noopener">PDF</a>' : '') + '</div>').join('') + '</div>';
 }
 
 /* ================= Бошқалар ================= */
+function isStandalone() { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
 let tt;
 function toast(m) {
   clearTimeout(tt); let el = $('#toast');
