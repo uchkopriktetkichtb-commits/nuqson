@@ -155,7 +155,7 @@ main{max-width:640px;margin:0 auto;padding:14px 14px calc(110px + var(--safe-b))
 <script>
 'use strict';
 /* ================= Ёрдамчилар ================= */
-const APP_VER = '2.0';
+const APP_VER = '2.1';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -317,7 +317,54 @@ const planKind = d => isL4(d) ? 'Л04' : 'ТП';
 const netItems = () => isL4(S.draft) ? (M().l04 || []) : (M().hl || []);
 const netGroups = () => isL4(S.draft) ? (M().l04Groups || []) : (M().hlGroups || []);
 const phNote = d => ((M().phNote || {})[d && d.kind === 'tp' ? 'tp' : 'hl'] || []).map(x => '• ' + esc(x)).join('<br>');
-const hlOf = id => netItems().find(h => h[0] === String(id));
+const isNetId = id => /^[hl]:/.test(String(id));
+// ТП далолатномасида 6-10 кВ ва 0,4 кВ ЭУТ ишлари ҳам (намуналар бирлаштирилган)
+function netAll() {
+  const o1 = M().groups.length, g1 = M().hlGroups || [], o2 = o1 + g1.length;
+  return {
+    items: [...(M().hl || []).map(x => ['h:' + x[0], x[1], o1 + x[2], x[3], x[4], x[5]]), ...(M().l04 || []).map(x => ['l:' + x[0], x[1], o2 + x[2], x[3], x[4], x[5]])],
+    groups: [...g1.map(g => '6-10 кВ ЭУТ — ' + g), ...(M().l04Groups || []).map(g => '0,4 кВ ЭУТ — ' + g)]
+  };
+}
+const hlOf = id => isNetId(id) ? netAll().items.find(h => h[0] === String(id)) : netItems().find(h => h[0] === String(id));
+const grpOf = m => isHl(S.draft) ? (netGroups()[m[2]] || '') : (LIST().groups[m[2]] || '');
+// Таянч рақамлари — намунадаги шаклда
+const detType = h => {
+  h = String(h || '');
+  if (/оралиғида\s*-.*фаза/.test(h)) return 'sph';
+  if (/оралиғида\s*-/.test(h)) return 'scnt';
+  if (/оралиғи/.test(h)) return 'span';
+  if (/\(\s*\d+\s*дона\s*\)/.test(h)) return 'pcp';
+  if (/№\s*\d+\s*-\s*\d+\s*дона/.test(h)) return 'pcd';
+  if (/орасига/.test(h)) return 'betw';
+  if (/таянч/.test(h)) return 'poles';
+  return '';
+};
+const DETF = { pcp: ['Таянч №', 'Дона'], pcd: ['Таянч №', 'Дона'], span: ['Таянч №', 'Таянч №'], scnt: ['Таянч №', 'Таянч №', 'Дона'], sph: ['Таянч №', 'Таянч №', 'Фаза'], betw: ['Таянч №', 'Таянч №'] };
+const tr_ = x => String(x == null ? '' : x).trim();
+const poleToks = t => tr_(t).replace(/№/g, ' ').split(/[,;\s]+/).map(tr_).filter(Boolean);
+function detFmt(t, rows, poles) {
+  if (t === 'poles') return poleToks(poles).map(x => 'таянч № ' + x).join(', ');
+  rows = (rows || []).filter(r => tr_(r[0]));
+  switch (t) {
+    case 'betw': return rows[0] && tr_(rows[0][1]) ? 'таянч № ' + tr_(rows[0][0]) + ' ва таянч № ' + tr_(rows[0][1]) + ' лар орасига' : '';
+    case 'span': return rows.filter(r => tr_(r[1])).map(r => 'таянч ' + tr_(r[0]) + '-' + tr_(r[1]) + ' оралиғи').join(', ');
+    case 'scnt': case 'sph': return rows.filter(r => tr_(r[1])).map(r => 'таянч ' + tr_(r[0]) + '-' + tr_(r[1]) + ' оралиғида' + (tr_(r[2]) ? ' - ' + tr_(r[2]) + ' та' + (t === 'sph' ? ' фаза' : '') : '')).join(', ');
+    case 'pcp': return rows.map(r => 'таянч № ' + tr_(r[0]) + (tr_(r[1]) ? ' (' + tr_(r[1]) + ' дона)' : '')).join(', ');
+    case 'pcd': return rows.map(r => 'таянч № ' + tr_(r[0]) + (tr_(r[1]) ? ' - ' + tr_(r[1]) + ' дона' : '')).join(', ');
+  }
+  return '';
+}
+function detQty(t, rows, poles) {
+  const N = x => parseFloat(tr_(x).replace(',', '.')) || 0;
+  if (t === 'poles') return poleToks(poles).reduce((s, x) => { const m = x.match(/^(\d+)-(\d+)$/); return s + (m ? Math.abs(+m[2] - +m[1]) + 1 : 1); }, 0);
+  rows = (rows || []).filter(r => tr_(r[0]));
+  if (t === 'pcp' || t === 'pcd') return rows.reduce((s, r) => s + N(r[1]), 0);
+  if (t === 'scnt') return rows.reduce((s, r) => s + N(r[2]), 0);
+  if (t === 'span') return rows.reduce((s, r) => s + (N(r[0]) && N(r[1]) ? Math.abs(N(r[1]) - N(r[0])) : 0), 0);
+  if (t === 'betw') return rows.length && tr_(rows[0][1]) ? 1 : 0;
+  return 0;
+}
 const itemOf = id => isHl(S.draft) ? hlOf(id) : matOf(id);
 const uTxt = u => String(u || '').replace(/\n/g, ' ');
 const plan = () => M().plan || [];
@@ -594,7 +641,7 @@ function matRow(m) {
     (it ? '<div class="mu xs">' + esc(it.rsn || '') + (it.note ? ' · ' + esc(it.note.length > 70 ? it.note.slice(0, 70) + '…' : it.note) : '') + ((it.ph || []).length ? ' · 📷' + it.ph.length : '') + '</div>' : '') + '</div>' +
     (it ? '<span class="pill">' + fmtQ(it.q) + ' ' + esc(uTxt(it.u)) + '</span>' : '<span class="chev">＋</span>') + '</button>';
 }
-const LIST = () => isHl(S.draft) ? { items: netItems(), groups: netGroups() } : { items: M().mats, groups: M().groups };
+const LIST = () => { if (isHl(S.draft)) return { items: netItems(), groups: netGroups() }; const N = netAll(); return { items: [...M().mats, ...N.items], groups: [...M().groups, ...N.groups] }; };
 function matList() {
   const box = $('#mlist'), q = S.q.trim().toLowerCase(), D = LIST();
   let h = '';
@@ -611,7 +658,7 @@ function matList() {
   }
   box.innerHTML = h;
   box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = +b.dataset.g; S.openG = S.openG === g ? -1 : g; matList(); if (S.openG === g) b.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
-  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (isHl(S.draft) ? hlSheet : itemSheet)(b.dataset.m));
+  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (isHl(S.draft) || isNetId(b.dataset.m) ? hlSheet : itemSheet)(b.dataset.m));
 }
 
 /* ---- битта нуқсон (пастдан очиладиган ойна) ---- */
@@ -684,6 +731,10 @@ function itemSheet(mid) {
 function hlSheet(id) {
   const m = hlOf(id), d = S.draft, ex = d.items[id];
   const it = ex ? JSON.parse(JSON.stringify(ex)) : { q: '', u: m[3], rsn: m[4] || '', note: '', ret: '', ph: (S._pendingPh || {})[id] || [] };
+  const dt = detType(m[5]), cnt = !/км|м2|дарахт/.test(m[3]);
+  if (!it.rows) it.rows = [];
+  if (it.poles == null) it.poles = dt === 'poles' && it.note && !/[А-Яа-яЎўҚқҒғҲҳ]/.test(it.note.replace(/№/g, '')) ? it.note : '';
+  let manual = !!(ex && it.note && !it.rows.length && !it.poles);
   const reasons = [...new Set([m[4], ...M().reasons, 'мавжуд эмас', 'қийшайган'].filter(Boolean))];
   const persist = () => { if (d.items[id]) { d.items[id].ph = it.ph; saveDraft(); } else { S._pendingPh = S._pendingPh || {}; S._pendingPh[id] = it.ph; } };
   const drawPh = () => {
@@ -698,10 +749,13 @@ function hlSheet(id) {
     thumbs();
   };
   const dec = /км/.test(m[3]);
-  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc(netGroups()[m[2]] || '') + ' · ' + esc(objTitle(d)) + '</div>' +
+  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc(grpOf(m)) + ' · ' + esc(objTitle(d)) + '</div>' +
     '<div class="fld"><span>Миқдори (' + esc(uTxt(m[3])) + ')</span><div class="qty"><button id="mn">−</button><input id="qv" class="inp big" inputmode="decimal" value="' + esc(it.q === '' ? '' : fmtQ(it.q)) + '" placeholder="0"><button id="pl">+</button></div>' +
     '<div id="qerr" class="err hidden"></div>' + (dec ? '<div class="mu xs" style="margin-top:6px">Километрда: масалан 0,45</div>' : '') + '</div>' +
-    '<label class="fld"><span>Таянч рақамлари / оралиқлар</span><textarea id="nv" class="inp" rows="3" style="min-height:84px;resize:vertical" placeholder="' + esc(m[5] ? 'Масалан: ' + m[5] : 'Масалан: таянч № 10, таянч № 14') + '">' + esc(it.note) + '</textarea></label>' +
+    (dt ? '<div class="fld"><span>' + (dt === 'poles' ? 'Таянч рақамлари' : /^s/.test(dt) ? 'Таянчлар оралиғи' : 'Таянчлар') + '</span><div id="det"></div>' +
+      '<div class="mu xs" style="margin-top:6px">Далолатномада: <b id="dprev">—</b></div>' +
+      '<button class="lnk xs" id="man" style="margin-top:4px">✏️ Қўлда ёзиш</button><textarea id="nv" class="inp hidden" rows="3" style="min-height:84px;resize:vertical;margin-top:6px" placeholder="' + esc('Масалан: ' + m[5]) + '">' + esc(manual ? it.note : '') + '</textarea></div>'
+      : '<textarea id="nv" class="hidden"></textarea>') +
     '<div class="fld"><span>Сабаби</span><div class="chips" id="rch">' + reasons.map(r => '<button class="chip sm' + (r === it.rsn ? ' on' : '') + '" data-r="' + esc(r) + '">' + esc(r) + '</button>').join('') + '</div>' +
     '<input id="rv" class="inp" style="margin-top:8px" placeholder="ёки ўзингиз ёзинг" value="' + esc(reasons.includes(it.rsn) ? '' : it.rsn) + '"></div>' +
     '<label class="fld"><span>Қайтган қисмлар — ихтиёрий</span><input id="retv" class="inp" value="' + esc(it.ret || '') + '" placeholder="масалан: 2 дона ёғоч таянч"></label>' +
@@ -709,16 +763,47 @@ function hlSheet(id) {
     '<div class="btns' + (ex ? ' two' : '') + '" style="margin-top:6px">' + (ex ? '<button class="btn bad" id="rm">Олиб ташлаш</button>' : '') + '<button class="btn pri lg" id="ok">Сақлаш</button></div>');
   drawPh();
   const qv = $('#qv'), step = dec ? 0.05 : 1;
+  const detTxt = () => manual ? $('#nv').value.trim() : detFmt(dt, it.rows, it.poles);
+  const upd = (auto) => {
+    if (!dt) return;
+    $('#dprev').textContent = detTxt() ? '(' + detTxt() + ')' : '—';
+    if (auto && cnt && !manual) { const n = detQty(dt, it.rows, it.poles); if (n > 0) qv.value = fmtQ(n); }
+  };
+  const drawDet = () => {
+    if (!dt) return;
+    const box = $('#det');
+    if (manual) { box.innerHTML = ''; $('#nv').classList.remove('hidden'); $('#man').textContent = '↩︎ Катакларга қайтиш'; upd(false); return; }
+    $('#nv').classList.add('hidden'); $('#man').textContent = '✏️ Қўлда ёзиш';
+    if (dt === 'poles') {
+      box.innerHTML = '<input id="pv" class="inp" inputmode="text" autocomplete="off" placeholder="масалан: 14 21 ёки 1-10" value="' + esc(it.poles) + '"><div class="mu xs" style="margin-top:4px">Рақамларни бўш жой ёки вергул билан ёзинг. Оралиқ: 1-10</div>';
+      $('#pv').oninput = e => { it.poles = e.target.value; upd(true); };
+    } else {
+      const F = DETF[dt], one = dt === 'betw';
+      if (!it.rows.length) it.rows.push(F.map(() => ''));
+      box.innerHTML = '<div class="row-flex mu xs" style="gap:6px;margin-bottom:4px">' + F.map((f, j) => '<span style="flex:1">' + esc(f) + '</span>' + (j === 0 && /^s/.test(dt) ? '<span style="width:8px"></span>' : '')).join('') + (!one && it.rows.length > 1 ? '<span style="width:28px"></span>' : '') + '</div>' + it.rows.map((r, i) => '<div class="row-flex" style="gap:6px;margin-bottom:6px">' + F.map((f, j) =>
+        '<input class="inp" data-r="' + i + '" data-c="' + j + '" inputmode="' + (j < 2 && f.indexOf('Таянч') === 0 ? 'text' : 'decimal') + '" style="flex:1;min-width:0" placeholder="' + esc(f) + '" value="' + esc(r[j] || '') + '">' +
+        (j === 0 && /^s/.test(dt) ? '<span class="mu">–</span>' : '')).join('') +
+        (!one && it.rows.length > 1 ? '<button class="lnk" data-x="' + i + '" aria-label="Ўчириш">✕</button>' : '') + '</div>').join('') +
+        (one ? '' : '<button class="btn" id="addr" style="width:auto;padding:8px 14px">＋ Яна ' + (/^s/.test(dt) ? 'оралиқ' : 'таянч') + '</button>');
+      box.querySelectorAll('[data-r]').forEach(inp => inp.oninput = () => { it.rows[+inp.dataset.r][+inp.dataset.c] = inp.value; upd(true); });
+      box.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { it.rows.splice(+b.dataset.x, 1); drawDet(); upd(true); });
+      if ($('#addr')) $('#addr').onclick = () => { it.rows.push(F.map(() => '')); drawDet(); const ins = box.querySelectorAll('[data-c="0"]'); ins[ins.length - 1].focus(); };
+    }
+    upd(false);
+  };
+  if (dt) { $('#man').onclick = () => { manual = !manual; drawDet(); upd(true); }; $('#nv').oninput = () => upd(false); drawDet(); }
   $('#mn').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.max(0, Math.round((v - step) * 1000) / 1000)); };
   $('#pl').onclick = () => { const v = num(qv.value) || 0; qv.value = fmtQ(Math.round((v + step) * 1000) / 1000); };
   $('#rch').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { it.rsn = b.dataset.r; $('#rv').value = ''; $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); });
   $('#rv').oninput = e => { if (e.target.value.trim()) $('#rch').querySelectorAll('[data-r]').forEach(x => x.classList.remove('on')); };
-  if (!ex) setTimeout(() => qv.focus(), 250);
+  if (!ex && !dt) setTimeout(() => qv.focus(), 250);
+  if (!ex && dt === 'poles') setTimeout(() => $('#pv') && $('#pv').focus(), 250);
   $('#ok').onclick = () => {
     const q = num(qv.value), err = $('#qerr');
     if (q == null || q <= 0) { err.textContent = 'Миқдорни ёзинг'; err.classList.remove('hidden'); qv.focus(); return; }
     const rv = $('#rv').value.trim(); if (rv) it.rsn = rv;
-    d.items[id] = { q: Math.round(q * 1000) / 1000, u: m[3], rsn: it.rsn, note: $('#nv').value.trim(), ret: $('#retv').value.trim(), ph: it.ph };
+    d.items[id] = { q: Math.round(q * 1000) / 1000, u: m[3], rsn: it.rsn, note: dt ? detTxt() : '', ret: $('#retv').value.trim(), ph: it.ph,
+      rows: manual ? [] : it.rows.filter(r => tr_(r[0])), poles: manual ? '' : it.poles };
     if (S._pendingPh) delete S._pendingPh[id];
     saveDraft(); closeSheet(); toast('✓ ' + m[1] + ' — ' + fmtQ(q) + ' ' + uTxt(m[3]));
   };
@@ -780,7 +865,7 @@ async function vReview(a, bb) {
   });
   h += '<div id="pend" class="mu sm center" style="margin-top:8px"></div>';
   a.innerHTML = h;
-  a.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (hl ? hlSheet : itemSheet)(b.dataset.m));
+  a.querySelectorAll('[data-m]').forEach(b => b.onclick = () => (hl || isNetId(b.dataset.m) ? hlSheet : itemSheet)(b.dataset.m));
   if ($('#gpl')) $('#gpl').onclick = e => { e.preventDefault(); go('photos'); };
   bb.innerHTML = '<div class="bbar"><div class="in" style="grid-template-columns:1fr"><button class="btn ok lg" id="snd">✅ Далолатномани юбориш</button></div></div>';
   $('#snd').onclick = () => {
