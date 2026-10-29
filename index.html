@@ -155,7 +155,7 @@ main{max-width:640px;margin:0 auto;padding:14px 14px calc(110px + var(--safe-b))
 <script>
 'use strict';
 /* ================= Ёрдамчилар ================= */
-const APP_VER = '1.2';
+const APP_VER = '2.0';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -309,18 +309,24 @@ const unitsOf = m => [...new Set([m[3], 'дона', 'метр'])];
 const smHas = (tp, kva) => M().sm.some(s => s[0] === tp && s[1] === kva);
 const mfyOf = tp => { const t = M().tps.find(x => x[0] === tp); return t ? t[2] : ''; };
 const mfyTxt = m => !m ? '' : (/МФЙ$/i.test(m) ? m : m + ' МФЙ');
-const isHl = d => !!d && d.kind === 'hl';
-const hasObj = d => !!d && (isHl(d) ? !!d.feeder : !!d.tp);
-const hlOf = id => (M().hl || []).find(h => h[0] === String(id));
+const isL4 = d => !!d && d.kind === 'l04';
+const isHl = d => !!d && (d.kind === 'hl' || d.kind === 'l04');   // тармоқ кўриниши (6-10 кВ ва 0,4 кВ ЭУТ)
+const hasObj = d => !!d && (d.kind === 'hl' ? !!d.feeder : !!d.tp);
+const trOf = d => d && d.tr === 'жорий' ? 'жорий' : 'мукаммал';
+const planKind = d => isL4(d) ? 'Л04' : 'ТП';
+const netItems = () => isL4(S.draft) ? (M().l04 || []) : (M().hl || []);
+const netGroups = () => isL4(S.draft) ? (M().l04Groups || []) : (M().hlGroups || []);
+const phNote = d => ((M().phNote || {})[d && d.kind === 'tp' ? 'tp' : 'hl'] || []).map(x => '• ' + esc(x)).join('<br>');
+const hlOf = id => netItems().find(h => h[0] === String(id));
 const itemOf = id => isHl(S.draft) ? hlOf(id) : matOf(id);
 const uTxt = u => String(u || '').replace(/\n/g, ' ');
 const plan = () => M().plan || [];
 const planYear = () => (plan()[0] || [])[9] || '';
-const inPlanTp = (tp, kva) => plan().some(p => p[0] === 'ТП' && p[1] === tp && p[2] === kva);
-const objTitle = d => isHl(d) ? d.kv + ' кВ ' + d.feeder : 'ТП-' + d.tp + '/' + d.kva + ' кВА';
-const objSub = d => isHl(d) ? [d.km !== '' && d.km != null ? fmtQ(d.km) + ' км' : '', mfyTxt(d.mfy)].filter(Boolean).join(' · ') : mfyTxt(d.mfy);
+const inPlanTp = (tp, kva, k) => plan().some(p => p[0] === (k || 'ТП') && p[1] === tp && p[2] === kva);
+const objTitle = d => d.kind === 'hl' ? d.kv + ' кВ ' + d.feeder : 'ТП-' + d.tp + '/' + d.kva + ' кВА' + (isL4(d) ? ' · 0,4 кВ ЭУТ' : '');
+const objSub = d => d.kind === 'hl' ? [d.km !== '' && d.km != null ? fmtQ(d.km) + ' км' : '', mfyTxt(d.mfy)].filter(Boolean).join(' · ') : mfyTxt(d.mfy);
 const myB = () => M().me.admin ? (S.draft && S.draft.bolim || '') : M().me.bolim;
-const planFor = kind => plan().filter(p => p[0] === kind && (S.allB || !myB() || p[6] === myB()));
+const planFor = kind => plan().filter(p => p[0] === kind && (S.allB || !myB() || p[6] === myB()) && (!S.draft || !p[10] || p[10] === trOf(S.draft)));
 function gpCount(d) { let n = 0; for (const k in d.gp) n += d.gp[k].length; return n; }
 function photoCount(d) { let n = 0; for (const k in d.items) n += (d.items[k].ph || []).length; for (const k in d.gp) n += d.gp[k].length; return n; }
 function gpDone(d) { return M().photos.filter((_, i) => d.gp[i] && d.gp[i].length).length; }
@@ -339,7 +345,7 @@ function warnings(d) {
   return w;
 }
 function newDraft() {
-  return { did: uid(), kind: S.lastKind || 'tp', bolim: M().me.admin ? '' : M().me.bolim, tp: '', kva: '', mfy: '', feeder: '', kv: '', km: '', items: {}, gp: {}, t: Date.now() };
+  return { did: uid(), kind: S.lastKind || 'tp', tr: S.lastTr || 'мукаммал', bolim: M().me.admin ? '' : M().me.bolim, tp: '', kva: '', mfy: '', feeder: '', kv: '', km: '', items: {}, gp: {}, t: Date.now() };
 }
 async function dropDraft() {
   if (!S.draft) return;
@@ -419,7 +425,7 @@ function vHome(a) {
     ? '<div class="info" style="margin-top:14px">📲 <b>Иловани экранга қўйиш:</b> Safari\'да <b>⎋ Поделиться</b> → <b>«На экран Домой»</b> ни босинг.</div>'
     : '<div class="info" style="margin-top:14px">📲 <b>Иловани экранга қўйиш:</b><br>1. Агар бу саҳифа Telegram ичида очилган бўлса — юқоридаги <b>⋮</b> → <b>«Открыть в Chrome»</b>.<br>2. Chrome\'да <b>⋮</b> → <b>«Добавить на главный экран»</b> ёки <b>«Установить приложение»</b>.</div>';
   const pl = plan();
-  h += '<p class="center mu xs" style="margin-top:26px">' + (pl.length ? 'Режа ' + esc(planYear()) + ': ' + pl.filter(p => p[0] === 'ТП').length + ' ТП, ' + pl.filter(p => p[0] === 'ХЛ').length + ' тармоқ · ' : 'Смета: ' + esc(M().year || '—') + ' · ') +
+  h += '<p class="center mu xs" style="margin-top:26px">' + (pl.length ? 'Режа ' + esc(planYear()) + ': ' + pl.filter(p => p[0] === 'ТП').length + ' ТП, ' + pl.filter(p => p[0] === 'ХЛ').length + ' тармоқ, ' + pl.filter(p => p[0] === 'Л04').length + ' ЭУТ 0,4 · ' : 'Смета: ' + esc(M().year || '—') + ' · ') +
     'ТПлар: ' + M().tps.length + ' · v' + APP_VER +
     '<br><button class="btn ghost" style="width:auto;display:inline-flex;min-height:36px;font-size:13px" id="out">Чиқиш</button></p>';
   a.innerHTML = h;
@@ -438,16 +444,19 @@ function vHome(a) {
 function vTp(a) {
   const d = S.draft, me = M().me;
   $('#title').textContent = 'Объект танлаш';
-  let h = '<div class="seg" id="kseg" style="margin-bottom:6px"><button data-k="tp" class="' + (isHl(d) ? '' : 'on') + '">🏭 ТП</button><button data-k="hl" class="' + (isHl(d) ? 'on' : '') + '">⚡ 6-10 кВ тармоқ</button></div>';
+  const K = d.kind || 'tp';
+  let h = '<div class="seg" id="kseg" style="margin-bottom:6px"><button data-k="tp" class="' + (K === 'tp' ? 'on' : '') + '">🏭 ТП</button><button data-k="hl" class="' + (K === 'hl' ? 'on' : '') + '">⚡ 6-10 кВ</button><button data-k="l04" class="' + (K === 'l04' ? 'on' : '') + '">🔌 0,4 кВ ЭУТ</button></div>' +
+    '<div class="seg" id="trseg" style="margin-bottom:6px"><button data-tr="мукаммал" class="' + (trOf(d) === 'мукаммал' ? 'on' : '') + '">Мукаммал таъмир</button><button data-tr="жорий" class="' + (trOf(d) === 'жорий' ? 'on' : '') + '">Жорий таъмир</button></div>';
   if (me.admin) {
     h += '<div class="sec-t">Бўлим</div><div class="chips" style="margin-bottom:6px">' +
       M().us.map(u => '<button class="chip' + (d.bolim === u[0] ? ' on' : '') + '" data-b="' + esc(u[0]) + '">' + esc(u[0]) + ' · ' + esc(u[1]) + '</button>').join('') + '</div>';
   }
-  h += isHl(d)
+  h += d.kind === 'hl'
     ? '<div class="sec-t">Узатма номи</div><div class="search"><input id="tpq" class="inp" autocomplete="off" placeholder="Масалан: Мирзахўжа" value="' + esc(S.tpq) + '"></div><div id="tpres" style="margin-top:12px"></div>'
     : '<div class="sec-t">ТП рақами</div><div class="search"><input id="tpq" class="inp" inputmode="numeric" autocomplete="off" placeholder="Масалан: 165" value="' + esc(S.tpq) + '"></div><div id="tpres" style="margin-top:12px"></div>';
   a.innerHTML = h;
   a.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { d.bolim = b.dataset.b; saveDraft(); a.querySelectorAll('[data-b]').forEach(x => x.classList.toggle('on', x === b)); objResults(); });
+  a.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => { d.tr = b.dataset.tr; S.lastTr = d.tr; saveDraft(); render(); });
   a.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
     const k = b.dataset.k; if (k === (d.kind || 'tp')) return;
     if (Object.keys(d.items).length && !confirm('Белгиланган нуқсонлар ўчирилиб, объект тури алмаштирилсинми?')) return;
@@ -457,7 +466,7 @@ function vTp(a) {
   inp.oninput = () => { S.tpq = inp.value.trim(); objResults(); };
   objResults();
 }
-function objResults() { return isHl(S.draft) ? hlResults() : tpResults(); }
+function objResults() { return S.draft.kind === 'hl' ? hlResults() : tpResults(); }
 function bToggle() {
   const b = myB(); if (!b) return '';
   return '<button class="btn ghost" id="allb" style="min-height:40px;margin-top:4px">' + (S.allB ? 'Фақат ' + esc(b) + ' бўлим' : 'Барча бўлимларни кўрсатиш') + '</button>';
@@ -504,18 +513,19 @@ function hlManual() {
 function pickHl(feeder, kv, km, mfy, bol) {
   const d = S.draft;
   if (M().me.admin && !d.bolim) { if (bol) d.bolim = bol; else { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); } }
+  const pr = plan().find(p => p[0] === 'ХЛ' && p[3] === feeder && p[4] === String(kv) && (!p[10] || p[10] === trOf(d))); if (pr && pr[10]) d.tr = pr[10];
   d.kind = 'hl'; S.lastKind = 'hl'; d.feeder = feeder; d.kv = String(kv); d.km = km === '' || km == null ? '' : +km; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
   if (S.tpFromAct) { S.tpFromAct = false; history.back(); } else go('act', 'replace');
 }
 function tpResults() {
-  const q = S.tpq.toLowerCase(), box = $('#tpres'); let h = '';
+  const q = S.tpq.toLowerCase(), box = $('#tpres'), pk = planKind(S.draft); let h = '';
   const row = (tp, kva, mfy, sm) => '<button class="it" data-tp="' + esc(tp) + '" data-kva="' + esc(kva) + '"><div class="grow"><div class="t" style="font-size:18px">ТП-' + esc(tp) +
     ' <span class="mu" style="font-weight:500">/ ' + esc(kva) + ' кВА</span></div><div class="mu sm">' + esc(mfy || '—') + '</div></div>' +
-    (inPlanTp(tp, kva) ? '<span class="badge ok">Режа ' + esc(planYear()) + '</span>' : sm ? '<span class="badge ok">Смета ' + esc(M().year) + '</span>' : '<span class="badge gr">режада йўқ</span>') + '</button>';
-  if (!q && plan().some(p => p[0] === 'ТП')) {
-    const pl = planFor('ТП');
-    h = '<div class="sec-t" style="margin-top:4px">Режа ' + esc(planYear()) + ' — ТПлар (' + pl.length + ')</div>' +
-      (pl.length ? '<div class="list">' + pl.map(planRowTp).join('') + '</div>' : '<p class="mu">Режада бу бўлим учун ТП йўқ.</p>') + bToggle();
+    (inPlanTp(tp, kva, pk) ? '<span class="badge ok">Режа ' + esc(planYear()) + '</span>' : sm ? '<span class="badge ok">Смета ' + esc(M().year) + '</span>' : '<span class="badge gr">режада йўқ</span>') + '</button>';
+  if (!q && plan().some(p => p[0] === pk)) {
+    const pl = planFor(pk);
+    h = '<div class="sec-t" style="margin-top:4px">Режа ' + esc(planYear()) + ' (' + esc(trOf(S.draft)) + ') — ' + (pk === 'Л04' ? '0,4 кВ ЭУТлар' : 'ТПлар') + ' (' + pl.length + ')</div>' +
+      (pl.length ? '<div class="list">' + pl.map(planRowTp).join('') + '</div>' : '<p class="mu">Режада бу бўлим учун йўқ.</p>') + bToggle();
   } else if (!q) {
     const sm = [...M().sm].sort((x, y) => (+x[0] - +y[0]) || (+x[1] - +y[1]));
     h = sm.length ? '<div class="sec-t" style="margin-top:4px">Сметадаги ТПлар (' + sm.length + ')</div><div class="chips">' +
@@ -552,7 +562,10 @@ function manualForm() {
 function pickTp(tp, kva, mfy, bol) {
   const d = S.draft;
   if (M().me.admin && !d.bolim) { if (bol) d.bolim = bol; else { window.scrollTo(0, 0); return toast('Аввал бўлимни танланг'); } }
-  d.kind = 'tp'; S.lastKind = 'tp'; d.tp = tp; d.kva = kva; d.mfy = mfy || ''; saveDraft(); S.manual = false; S.q = '';
+  d.kind = isL4(d) ? 'l04' : 'tp'; S.lastKind = d.kind; d.tp = tp; d.kva = kva; d.mfy = mfy || '';
+  const pr = plan().find(p => p[0] === planKind(d) && p[1] === tp && p[2] === kva && (!p[10] || p[10] === trOf(d))) || plan().find(p => p[0] === planKind(d) && p[1] === tp && p[2] === kva);
+  if (pr) { if (pr[10]) d.tr = pr[10]; if (pr[3]) d.feeder = pr[3]; }
+  saveDraft(); S.manual = false; S.q = '';
   if (S.tpFromAct) { S.tpFromAct = false; history.back(); } else go('act', 'replace');
 }
 
@@ -561,16 +574,16 @@ function vAct(a, bb) {
   const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
   $('#title').textContent = 'Нуқсонлар';
   const n = Object.keys(d.items).length, hl = isHl(d);
-  const inPl = hl ? plan().some(p => p[0] === 'ХЛ' && p[3] === d.feeder && p[4] === d.kv) : inPlanTp(d.tp, d.kva);
+  const inPl = d.kind === 'hl' ? plan().some(p => p[0] === 'ХЛ' && p[3] === d.feeder && p[4] === d.kv) : inPlanTp(d.tp, d.kva, planKind(d));
   let h = '<div class="card tp-card"><div class="row-flex"><div class="grow"><div class="big">' + (hl ? '⚡ ' : '') + esc(objTitle(d)) + '</div>' +
-    '<div class="mu sm">' + esc(objSub(d) || '—') + (M().me.admin ? ' · ' + esc(d.bolim) : '') + '</div></div><button class="lnk" id="chg" aria-label="Объектни ўзгартириш" title="Объектни ўзгартириш">✎</button></div>' +
+    '<div class="mu sm">' + esc(trOf(d)) + ' таъмир · ' + esc(objSub(d) || '—') + (M().me.admin ? ' · ' + esc(d.bolim) : '') + '</div></div><button class="lnk" id="chg" aria-label="Объектни ўзгартириш" title="Объектни ўзгартириш">✎</button></div>' +
     '<div class="stats"><div class="stat"><b>' + n + '</b>нуқсон</div><div class="stat"><b>' + photoCount(d) + '</b>расм</div><div class="stat"><b>' + (inPl ? '✓' : '—') + '</b>режа</div></div></div>';
   h += '<div class="search" style="margin-bottom:12px"><input id="q" class="inp" placeholder="Нуқсон қидириш (масалан: изолятор)" value="' + esc(S.q) + '" autocomplete="off"></div><div id="mlist"></div>';
   a.innerHTML = h;
-  $('#chg').onclick = () => { S.tpq = hl ? '' : d.tp; S.tpFromAct = true; go('tp'); };
+  $('#chg').onclick = () => { S.tpq = d.kind === 'hl' ? '' : d.tp; S.tpFromAct = true; go('tp'); };
   const q = $('#q'); q.oninput = () => { S.q = q.value; matList(); };
   matList();
-  bb.innerHTML = '<div class="bbar"><div class="in"><button class="btn" id="gpb" style="width:auto">📷 ' + (hl ? gpCount(d) : gpDone(d) + '/' + M().photos.length) + '</button>' +
+  bb.innerHTML = '<div class="bbar"><div class="in"><button class="btn" id="gpb" style="width:auto">📷 ' + gpCount(d) + '</button>' +
     '<button class="btn pri" id="rev"' + (n ? '' : ' disabled') + '>Кўриш ва юбориш →</button></div></div>';
   $('#gpb').onclick = () => go('photos');
   $('#rev').onclick = () => go('review');
@@ -581,7 +594,7 @@ function matRow(m) {
     (it ? '<div class="mu xs">' + esc(it.rsn || '') + (it.note ? ' · ' + esc(it.note.length > 70 ? it.note.slice(0, 70) + '…' : it.note) : '') + ((it.ph || []).length ? ' · 📷' + it.ph.length : '') + '</div>' : '') + '</div>' +
     (it ? '<span class="pill">' + fmtQ(it.q) + ' ' + esc(uTxt(it.u)) + '</span>' : '<span class="chev">＋</span>') + '</button>';
 }
-const LIST = () => isHl(S.draft) ? { items: M().hl || [], groups: M().hlGroups || [] } : { items: M().mats, groups: M().groups };
+const LIST = () => isHl(S.draft) ? { items: netItems(), groups: netGroups() } : { items: M().mats, groups: M().groups };
 function matList() {
   const box = $('#mlist'), q = S.q.trim().toLowerCase(), D = LIST();
   let h = '';
@@ -685,7 +698,7 @@ function hlSheet(id) {
     thumbs();
   };
   const dec = /км/.test(m[3]);
-  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc((M().hlGroups || [])[m[2]] || '') + ' · ' + esc(objTitle(d)) + '</div>' +
+  openSheet('<h3>' + esc(m[1]) + '</h3><div class="mu sm" style="margin-bottom:14px">' + esc(netGroups()[m[2]] || '') + ' · ' + esc(objTitle(d)) + '</div>' +
     '<div class="fld"><span>Миқдори (' + esc(uTxt(m[3])) + ')</span><div class="qty"><button id="mn">−</button><input id="qv" class="inp big" inputmode="decimal" value="' + esc(it.q === '' ? '' : fmtQ(it.q)) + '" placeholder="0"><button id="pl">+</button></div>' +
     '<div id="qerr" class="err hidden"></div>' + (dec ? '<div class="mu xs" style="margin-top:6px">Километрда: масалан 0,45</div>' : '') + '</div>' +
     '<label class="fld"><span>Таянч рақамлари / оралиқлар</span><textarea id="nv" class="inp" rows="3" style="min-height:84px;resize:vertical" placeholder="' + esc(m[5] ? 'Масалан: ' + m[5] : 'Масалан: таянч № 10, таянч № 14') + '">' + esc(it.note) + '</textarea></label>' +
@@ -719,14 +732,14 @@ function hlSheet(id) {
 /* ---- умумий расмлар ---- */
 function vPhotos(a) {
   const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
-  $('#title').textContent = isHl(d) ? 'Тармоқ расмлари' : 'Умумий расмлар';
-  if (isHl(d)) {
+  $('#title').textContent = 'Расмлар (фотоальбом)';
+  if (true) {
     const arr = d.gp['0'] || [];
-    a.innerHTML = '<div class="info">⚡ ' + esc(objTitle(d)) + ' — тармоқ бўйлаб истаганча расм олинг: таянчлар, симлар, изоляторлар, РЛНД ва ҳ.к.</div>' +
+    a.innerHTML = '<div class="info"><b>' + esc(objTitle(d)) + '</b> — таъмирдан олдинги ҳолат расмлари. Фотоальбомда ҳар бетга 3 тадан жойлашади, сарлавҳа автомат ёзилади.<br>' + phNote(d) + '</div>' +
       '<div class="card"><div style="font-weight:600;margin-bottom:10px">Расмлар: ' + arr.length + ' та</div><div class="thumbs">' +
       arr.map(p => '<button class="th" data-p="' + p + '"><img data-pid="' + p + '" alt=""><span class="st">⏳</span></button>').join('') +
       '<button class="add-ph" id="hc"><b>📷</b>Расм олиш</button><button class="add-ph" id="hg"><b>🖼</b>Галерея</button></div></div>';
-    const add = gal => pickPhoto({ name: 'Тармоқ_' + d.kv + 'кВ_' + d.feeder, add: p => { (d.gp['0'] = d.gp['0'] || []).push(p); }, done: () => render() }, gal);
+    const add = gal => pickPhoto({ name: objTitle(d), add: p => { (d.gp['0'] = d.gp['0'] || []).push(p); }, done: () => render() }, gal);
     $('#hc').onclick = () => add(false); $('#hg').onclick = () => add(true);
     a.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
       if (!confirm('Расм ўчирилсинми?')) return;
@@ -754,12 +767,12 @@ function vPhotos(a) {
 async function vReview(a, bb) {
   const d = S.draft; if (!hasObj(d)) return go('home', 'replace');
   $('#title').textContent = 'Кўриш ва юбориш';
-  const hl = isHl(d), D = LIST(), w = warnings(d), miss = hl ? 0 : M().photos.length - gpDone(d);
-  let h = '<div class="card"><div class="xs mu">' + (hl ? '6-10 кВ ТАРМОҚ' : 'ТП') + '</div><div style="font-size:20px;font-weight:800">' + (hl ? '⚡ ' : '') + esc(objTitle(d)) + '</div>' +
+  const hl = isHl(d), D = LIST(), w = warnings(d), miss = 0;
+  let h = '<div class="card"><div class="xs mu">' + (d.kind === 'hl' ? '6-10 кВ ТАРМОҚ' : isL4(d) ? '0,4 кВ ЭУТ' : 'ТП') + ' · ' + trOf(d).toUpperCase() + ' ТАЪМИР</div><div style="font-size:20px;font-weight:800">' + (hl ? '⚡ ' : '') + esc(objTitle(d)) + '</div>' +
     '<div class="mu sm">' + esc(objSub(d) || '—') + ' · ' + esc(d.bolim) + ' бўлим</div></div>';
   w.forEach(x => h += '<div class="warn">⚠️ ' + esc(x) + '</div>');
   if (miss) h += '<div class="warn">📷 Умумий расмлар тўлиқ эмас: ' + miss + ' та тур расмсиз. <a href="#" id="gpl">Қўшиш</a></div>';
-  if (hl && !gpCount(d)) h += '<div class="warn">📷 Тармоқ расмлари йўқ. <a href="#" id="gpl">Қўшиш</a></div>';
+  if (!gpCount(d)) h += '<div class="warn">📷 Фотоальбом учун расм йўқ. <a href="#" id="gpl">Қўшиш</a></div>';
   h += '<div class="sec-t">Нуқсонлар (' + Object.keys(d.items).length + ') · Расмлар: ' + photoCount(d) + '</div>';
   D.groups.forEach((g, gi) => {
     const ms = D.items.filter(m => m[2] === gi && d.items[m[0]]); if (!ms.length) return;
@@ -795,8 +808,7 @@ async function submit() {
   }
   // 2) далолатнома
   const map = {}; (await PH.byDid(d.did)).forEach(p => map[p.pid] = p.id);
-  const act = isHl(d) ? { kind: 'hl', bolim: d.bolim, feeder: d.feeder, kv: d.kv, km: d.km, mfy: d.mfy, items: {}, gp: {} }
-    : { kind: 'tp', bolim: d.bolim, tp: d.tp, kva: d.kva, mfy: d.mfy, items: {}, gp: {} };
+  const act = { kind: d.kind || 'tp', bolim: d.bolim, tp: d.tp, kva: d.kva, feeder: d.feeder, kv: d.kv, km: d.km, mfy: d.mfy, tr: trOf(d), items: {}, gp: {} };
   for (const [mid, it] of Object.entries(d.items)) act.items[mid] = { q: it.q, u: it.u, rsn: it.rsn, note: it.note, ret: it.ret || '', ph: (it.ph || []).map(p => map[p]).filter(Boolean) };
   for (const [i, arr] of Object.entries(d.gp)) act.gp[i] = arr.map(p => map[p]).filter(Boolean);
   S.send = { stage: 'mk', t0: Date.now() }; drawSend();
@@ -810,7 +822,7 @@ async function submit() {
   }
   if (!r || r.state === 'busy') r = await poll(d.did);
   clearInterval(tick);
-  if (r && r.state === 'done') { await dropDraft(); S.send = { stage: 'done', no: r.no, pdf: r.pdf }; drawSend(); }
+  if (r && r.state === 'done') { await dropDraft(); S.send = { stage: 'done', no: r.no, pdf: r.pdf, album: r.album }; drawSend(); }
   else sendErr(r && r.state === 'busy' ? 'Далолатнома ҳали тайёрланмоқда. Бир оздан кейин «📄 Ҳужжатларим» да текширинг — у Telegram\'га ҳам келади.' : 'Юборилмади. Қоралама сақланди — қайта уриниб кўринг.');
 }
 async function poll(did) {
@@ -835,8 +847,8 @@ function vSend(a) {
     a.innerHTML = '<div class="card center"><div class="spin"></div><h2>Далолатнома тайёрланмоқда</h2><p class="mu">Одатда 30–60 сония · ' + sec + ' с</p>' +
       '<div class="info" style="text-align:left">Иловани ёпсангиз ҳам далолатнома тайёр бўлади ва Telegram\'га келади.</div></div>';
   } else if (s.stage === 'done') {
-    a.innerHTML = '<div class="card center"><div class="big-ok">✅</div><h2 style="font-size:22px">' + esc(s.no) + '</h2><p class="mu">Нуқсон далолатномаси тайёр. PDF ва Excel Telegram\'га ҳам юборилди.</p>' +
-      '<div class="btns">' + (s.pdf ? '<a class="btn pri lg" href="' + esc(s.pdf) + '" target="_blank" rel="noopener">📄 PDF ни очиш</a>' : '') + '<button class="btn lg" id="hm">Бош саҳифа</button></div></div>';
+    a.innerHTML = '<div class="card center"><div class="big-ok">✅</div><h2 style="font-size:22px">' + esc(s.no) + '</h2><p class="mu">Нуқсон далолатномаси ва фотоальбом тайёр. PDF, Excel ва Word Telegram\'га ҳам юборилди.</p>' +
+      '<div class="btns">' + (s.pdf ? '<a class="btn pri lg" href="' + esc(s.pdf) + '" target="_blank" rel="noopener">📄 Далолатнома (PDF)</a>' : '') + (s.album ? '<a class="btn lg" href="' + esc(s.album) + '" target="_blank" rel="noopener">📷 Фотоальбом (PDF)</a>' : '') + '<button class="btn lg" id="hm">Бош саҳифа</button></div></div>';
     $('#hm').onclick = () => { S.send = null; go('home', 'replace'); };
   } else {
     a.innerHTML = '<div class="card center"><div class="big-ok">⚠️</div><p>' + esc(s.msg) + '</p><div class="btns">' +
@@ -860,9 +872,9 @@ function vDocs(a) {
   if (!D.length) { a.innerHTML = '<p class="center mu" style="margin-top:40px">Ҳали ҳужжат йўқ.</p>'; return; }
   const cls = s => /бажарилди/.test(s) ? 'ok' : /шакллантирилди/.test(s) ? 'gr' : /хато/.test(s) ? 'b' : 'w';
   a.innerHTML = '<div class="list">' + D.map(r => '<div class="it" style="cursor:default"><div class="grow"><div class="t">' + esc(r[0]) + '</div>' +
-    '<div class="mu sm">' + (r[3] ? 'ТП-' + esc(r[2]) + '/' + esc(r[3]) : '⚡ ' + esc(r[2])) + ' · ' + esc(r[1]) + (M().me.admin ? ' · ' + esc(r[8]) : '') + '</div>' +
+    '<div class="mu sm">' + (r[3] && !/ЭУТ/.test(r[2]) ? 'ТП-' + esc(r[2]) + '/' + esc(r[3]) : (/ЭУТ/.test(r[2]) ? '🔌 ' : '⚡ ') + esc(r[2])) + ' · ' + esc(r[1]) + (M().me.admin ? ' · ' + esc(r[8]) : '') + '</div>' +
     '<span class="badge ' + cls(r[5]) + '">' + esc(r[5]) + '</span></div>' +
-    (r[6] ? '<a class="btn" style="width:auto;min-height:40px" href="' + esc(r[6]) + '" target="_blank" rel="noopener">PDF</a>' : '') + '</div>').join('') + '</div>';
+    (r[6] ? '<a class="btn" style="width:auto;min-height:40px" href="' + esc(r[6]) + '" target="_blank" rel="noopener">PDF</a>' : '') + (r[9] ? '<a class="btn" style="width:auto;min-height:40px;margin-left:6px" href="' + esc(r[9]) + '" target="_blank" rel="noopener">📷</a>' : '') + '</div>').join('') + '</div>';
 }
 
 /* ================= Бошқалар ================= */
